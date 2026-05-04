@@ -1,26 +1,70 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #050913;
+  --foreground: #f3f7ff;
+  --muted: #0b1222;
+  --muted-foreground: #8792ad;
+  --card: #101827;
+  --border: #1c2940;
+  --primary: #d8ff3e;
+  --primary-foreground: #07101f;
+  --secondary: #7bafff;
+  --secondary-foreground: #ffffff;
+  --accent: #7bafff;
+  --accent-foreground: #07101f;
+  --navy: #f3f7ff;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-navy: var(--navy);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+a {
+  text-underline-offset: 4px;
+}
+
+.container-page {
+  width: min(1180px, calc(100% - 32px));
+  margin-inline: auto;
+}
+
+.hashtag {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.figma-card {
+  border: 1px solid rgb(255 255 255 / 0.06);
+  background: #191f31;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 0.22);
 }

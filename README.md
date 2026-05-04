@@ -16,6 +16,30 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Wyniki i terminarze RKS
+
+Publiczny Swagger ZPNS (`bus20-api-zpns`) nie zawiera endpointów meczów ani
+wyników. Aplikacja synchronizuje mecze przez Convex z dwóch źródeł:
+
+- Łączy Nas Piłka Competition API, jeśli w Convex ustawione są
+  `LNP_BEARER_TOKEN` i `LNP_PLAY_ID`.
+- Publiczne strony terminarzy Futbolowo jako fallback.
+
+Adresy Futbolowo konfiguruje się w Convex env var:
+
+```txt
+FUTBOLOWO_SCHEDULE_URLS=https://rksokecie.futbolowo.pl/schedule/3637/27558/4458|seniorzy|puchar
+```
+
+Format wpisu to `url|slug-druzyny|typ-meczu`, a wiele drużyn można oddzielić
+przecinkami. Obsługiwane typy: `liga`, `puchar`, `sparing`, `turniej`.
+
+Ręczne uruchomienie synchronizacji:
+
+```bash
+npx convex run matchesSync:triggerConfiguredSync
+```
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
