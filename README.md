@@ -19,16 +19,41 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 ## Wyniki i terminarze RKS
 
 Publiczny Swagger ZPNS (`bus20-api-zpns`) nie zawiera endpointów meczów ani
-wyników. Aplikacja synchronizuje mecze przez Convex z dwóch źródeł:
+wyników. Aplikacja synchronizuje mecze przez Convex do własnej bazy. Frontend
+czyta z naszej warstwy danych, a publiczny endpoint `/api/rks-matches` działa
+jako awaryjny fallback z krótkim cache.
 
 - Łączy Nas Piłka Competition API, jeśli w Convex ustawione są
-  `LNP_BEARER_TOKEN` i `LNP_PLAY_ID`.
-- Publiczne strony terminarzy Futbolowo jako fallback.
+  `LNP_BEARER_TOKEN` oraz `LNP_PLAY_ID` albo `LNP_PLAY_SOURCES`.
+- Regionalny Futbol jako publiczne źródło terminarza seniorów.
+- Publiczne strony terminarzy Futbolowo jako dodatkowy fallback.
+- RS Sport/Virium jako publiczne źródło lig zimowych, jeżeli mamy konkretne
+  `teamId`/`competitionId`.
 
-Adresy Futbolowo konfiguruje się w Convex env var:
+Każda realna drużyna ma osobny `teamSlug`, więc rocznik 2010 może mieć dwa
+niezależne strumienie danych: `rocznik-2010-i` i `rocznik-2010-ii`. Nie
+łączymy meczów po samej nazwie "RKS Okęcie".
+
+Oficjalne rozgrywki można podłączyć pojedynczo:
+
+```txt
+LNP_PLAY_ID=51848
+LNP_TEAM_SLUG=rocznik-2010-i
+LNP_MATCH_TYPE=liga
+```
+
+Albo wiele rozgrywek naraz:
+
+```txt
+LNP_PLAY_SOURCES=51848|rocznik-2010-i|liga,51855|rocznik-2010-ii|liga
+```
+
+Format wpisu to `play-id|slug-druzyny|typ-meczu|opcjonalny-team-id`.
+Adresy Futbolowo i Regionalny Futbol konfiguruje się podobnie:
 
 ```txt
 FUTBOLOWO_SCHEDULE_URLS=https://rksokecie.futbolowo.pl/schedule/3637/27558/4458|seniorzy|puchar
+REGIONALNY_FUTBOL_SOURCES=https://regionalnyfutbol.pl/liga%2Cklasa-okregowa-mazowiecka-grupa-warszawa-ii-sezon-2025-2026%2Cokecie-warszawa.html|seniorzy|liga
 ```
 
 Format wpisu to `url|slug-druzyny|typ-meczu`, a wiele drużyn można oddzielić

@@ -59,6 +59,9 @@ export const fallbackPosts = [
 
 export type MatchItem = {
   _id?: string;
+  teamSlug?: string;
+  teamName?: string;
+  sourceLabel?: string;
   homeTeam: string;
   awayTeam: string;
   date: number;

@@ -14,7 +14,20 @@ type NormalizedMatch = {
   status: "upcoming" | "live" | "finished";
 };
 
+type LnpSourceConfig = {
+  playId: string;
+  teamId?: string;
+  teamSlug?: string;
+  matchType?: NormalizedMatch["matchType"];
+};
+
 type FutbolowoScheduleConfig = {
+  url: string;
+  teamSlug?: string;
+  matchType?: NormalizedMatch["matchType"];
+};
+
+type RegionalnyFutbolConfig = {
   url: string;
   teamSlug?: string;
   matchType?: NormalizedMatch["matchType"];
@@ -22,6 +35,14 @@ type FutbolowoScheduleConfig = {
 
 const DEFAULT_LNP_API_BASE =
   "https://competition-api-pro.laczynaspilka.pl/api/bus/competition/v1/";
+
+const DEFAULT_REGIONALNY_FUTBOL_SOURCES: RegionalnyFutbolConfig[] = [
+  {
+    url: "https://regionalnyfutbol.pl/liga%2Cklasa-okregowa-mazowiecka-grupa-warszawa-ii-sezon-2025-2026%2Cokecie-warszawa.html",
+    teamSlug: "seniorzy",
+    matchType: "liga",
+  },
+];
 
 const DEFAULT_FUTBOLOWO_SCHEDULES: FutbolowoScheduleConfig[] = [
   {
@@ -34,54 +55,61 @@ const DEFAULT_FUTBOLOWO_SCHEDULES: FutbolowoScheduleConfig[] = [
 export const syncFromLnp = internalAction({
   handler: async (ctx) => {
     const bearerToken = process.env.LNP_BEARER_TOKEN;
-    const playId = process.env.LNP_PLAY_ID;
-    const teamId = process.env.LNP_TEAM_ID;
     const apiBase = process.env.LNP_COMPETITION_API_BASE || DEFAULT_LNP_API_BASE;
+    const sources = parseLnpSources();
 
-    if (!bearerToken || !playId) {
+    if (!bearerToken || sources.length === 0) {
       return {
         success: false,
-        error: "Missing LNP_BEARER_TOKEN or LNP_PLAY_ID in Convex env vars.",
+        error: "Missing LNP_BEARER_TOKEN or LNP_PLAY_ID/LNP_PLAY_SOURCES in Convex env vars.",
       };
     }
-
-    const endpoints = teamId
-      ? [
-          `teams/${teamId}/plays/${playId}/played-matches`,
-          `teams/${teamId}/plays/${playId}/not-played-matches`,
-        ]
-      : [`plays/${playId}/matches`];
 
     let upserted = 0;
     let skipped = 0;
 
-    for (const endpoint of endpoints) {
-      const response = await fetch(new URL(endpoint, apiBase), {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${bearerToken}`,
-        },
-      });
+    for (const source of sources) {
+      const endpoints = source.teamId
+        ? [
+            `teams/${source.teamId}/plays/${source.playId}/played-matches`,
+            `teams/${source.teamId}/plays/${source.playId}/not-played-matches`,
+          ]
+        : [`plays/${source.playId}/matches`];
 
-      if (!response.ok) {
-        return {
-          success: false,
-          error: `LNP API returned ${response.status} for ${endpoint}.`,
-        };
-      }
+      for (const endpoint of endpoints) {
+        const response = await fetch(new URL(endpoint, apiBase), {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${bearerToken}`,
+          },
+        });
 
-      const payload = await response.json();
-      const matches = extractMatches(payload);
-
-      for (const rawMatch of matches) {
-        const match = normalizeMatch(rawMatch);
-        if (!match) {
-          skipped++;
-          continue;
+        if (!response.ok) {
+          return {
+            success: false,
+            error: `LNP API returned ${response.status} for ${endpoint}.`,
+          };
         }
 
-        await ctx.runMutation(internal.matches.upsertFromLnp, match);
-        upserted++;
+        const payload = await response.json();
+        const matches = extractMatches(payload);
+
+        for (const rawMatch of matches) {
+          const match = normalizeMatch(rawMatch, source);
+          if (!match) {
+            skipped++;
+            continue;
+          }
+
+          await ctx.runMutation(internal.matches.upsertFromSource, {
+            ...match,
+            source: "lnp",
+            teamSlug: source.teamSlug,
+            sourceTeamId: source.teamId,
+            sourceCompetitionId: source.playId,
+          });
+          upserted++;
+        }
       }
     }
 
@@ -92,6 +120,58 @@ export const syncFromLnp = internalAction({
 export const triggerLnpSync = action({
   handler: async (ctx) => {
     return await ctx.runAction(internal.matchesSync.syncFromLnp);
+  },
+});
+
+export const syncFromRegionalnyFutbol = internalAction({
+  handler: async (ctx) => {
+    const schedules = parseRegionalnyFutbolSources(
+      process.env.REGIONALNY_FUTBOL_SOURCES,
+    );
+
+    let upserted = 0;
+    let skipped = 0;
+
+    for (const schedule of schedules) {
+      const response = await fetch(schedule.url, {
+        headers: { Accept: "text/html" },
+      });
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: `Regionalny Futbol returned ${response.status} for ${schedule.url}.`,
+        };
+      }
+
+      const matches = extractRegionalnyFutbolMatches(
+        await response.text(),
+        schedule,
+      );
+
+      for (const match of matches) {
+        if (!containsRksTeam(match)) {
+          skipped++;
+          continue;
+        }
+
+        await ctx.runMutation(internal.matches.upsertFromSource, {
+          ...match,
+          source: "regionalnyfutbol",
+          teamSlug: schedule.teamSlug,
+          sourceUrl: schedule.url,
+        });
+        upserted++;
+      }
+    }
+
+    return { success: true, upserted, skipped };
+  },
+});
+
+export const triggerRegionalnyFutbolSync = action({
+  handler: async (ctx) => {
+    return await ctx.runAction(internal.matchesSync.syncFromRegionalnyFutbol);
   },
 });
 
@@ -129,6 +209,7 @@ export const syncFromFutbolowo = internalAction({
           ...match,
           source: "futbolowo",
           teamSlug: schedule.teamSlug,
+          sourceUrl: schedule.url,
         });
         upserted++;
       }
@@ -148,9 +229,16 @@ export const syncConfiguredSources = internalAction({
   handler: async (ctx) => {
     const results: Record<string, unknown> = {};
 
-    if (process.env.LNP_BEARER_TOKEN && process.env.LNP_PLAY_ID) {
+    if (
+      process.env.LNP_BEARER_TOKEN &&
+      (process.env.LNP_PLAY_ID || process.env.LNP_PLAY_SOURCES)
+    ) {
       results.lnp = await ctx.runAction(internal.matchesSync.syncFromLnp);
     }
+
+    results.regionalnyFutbol = await ctx.runAction(
+      internal.matchesSync.syncFromRegionalnyFutbol,
+    );
 
     results.futbolowo = await ctx.runAction(
       internal.matchesSync.syncFromFutbolowo,
@@ -178,7 +266,10 @@ function extractMatches(payload: unknown): LnpMatch[] {
   return [];
 }
 
-function normalizeMatch(match: LnpMatch): NormalizedMatch | null {
+function normalizeMatch(
+  match: LnpMatch,
+  source: LnpSourceConfig,
+): NormalizedMatch | null {
   const sourceMatchId =
     pickString(match, ["id", "matchId", "uuid"]) ||
     pickString(record(match.match), ["id", "matchId", "uuid"]);
@@ -202,15 +293,70 @@ function normalizeMatch(match: LnpMatch): NormalizedMatch | null {
   const status = pickStatus(match, timestamp, result);
 
   return {
-    sourceMatchId,
+    sourceMatchId: `lnp:${source.playId}:${sourceMatchId}`,
     homeTeam,
     awayTeam,
     date: timestamp,
     venue: pickNestedName(match, ["venue", "stadium", "place"]),
     result,
-    matchType: "liga",
+    matchType: source.matchType || "liga",
     status,
   };
+}
+
+function parseLnpSources(): LnpSourceConfig[] {
+  const rawValue = process.env.LNP_PLAY_SOURCES;
+
+  if (!rawValue?.trim()) {
+    const playId = process.env.LNP_PLAY_ID;
+    if (!playId) return [];
+
+    return [
+      {
+        playId,
+        teamId: process.env.LNP_TEAM_ID || undefined,
+        teamSlug: process.env.LNP_TEAM_SLUG || "seniorzy",
+        matchType: parseMatchType(process.env.LNP_MATCH_TYPE),
+      },
+    ];
+  }
+
+  return rawValue
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const [playId, teamSlug, rawType, teamId] = entry
+        .split("|")
+        .map((part) => part.trim());
+      return {
+        playId,
+        teamSlug: teamSlug || undefined,
+        matchType: parseMatchType(rawType),
+        teamId: teamId || undefined,
+      };
+    })
+    .filter((entry) => entry.playId);
+}
+
+function parseRegionalnyFutbolSources(
+  rawValue: string | undefined,
+): RegionalnyFutbolConfig[] {
+  if (!rawValue?.trim()) return DEFAULT_REGIONALNY_FUTBOL_SOURCES;
+
+  return rawValue
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const [url, teamSlug, rawType] = entry.split("|").map((part) => part.trim());
+      return {
+        url,
+        teamSlug: teamSlug || undefined,
+        matchType: parseMatchType(rawType),
+      };
+    })
+    .filter((entry) => entry.url);
 }
 
 function parseFutbolowoSchedules(
@@ -274,6 +420,51 @@ function normalizeFutbolowoRow(
   };
 }
 
+function extractRegionalnyFutbolMatches(
+  html: string,
+  schedule: RegionalnyFutbolConfig,
+): NormalizedMatch[] {
+  const rows = html.match(
+    /<tr><td[^>]*class="nr"[^>]*>[\s\S]*?<\/tr>/g,
+  );
+
+  if (!rows) return [];
+
+  return rows
+    .map((row) => normalizeRegionalnyFutbolRow(row, schedule))
+    .filter((match): match is NormalizedMatch => Boolean(match));
+}
+
+function normalizeRegionalnyFutbolRow(
+  row: string,
+  schedule: RegionalnyFutbolConfig,
+): NormalizedMatch | null {
+  const sourceMatchId = row.match(/href="mecz,([^"]+)"/)?.[1];
+  const homeTeam = cleanText(pickRegionalCell(row, "homeTeam"));
+  const awayTeam = cleanText(pickRegionalCell(row, "awayTeam"));
+  const result = normalizeDashScore(pickRegionalCell(row, "result"));
+  const date = parseRegionalDate(pickRegionalCell(row, "date"));
+
+  if (!sourceMatchId || !homeTeam || !awayTeam || !date) return null;
+
+  return {
+    sourceMatchId: `regionalnyfutbol:${sourceMatchId}`,
+    homeTeam,
+    awayTeam,
+    date,
+    result,
+    matchType: schedule.matchType || "liga",
+    status: result ? "finished" : date > Date.now() ? "upcoming" : "finished",
+  };
+}
+
+function pickRegionalCell(row: string, className: string) {
+  const match = row.match(
+    new RegExp(`<td[^>]*class="${className}"[^>]*>([\\s\\S]*?)<\\/td>`),
+  );
+  return match?.[1] || "";
+}
+
 function pickClubNames(row: string) {
   const names = [...row.matchAll(/<div class="club-name">([\s\S]*?)<\/div>/g)]
     .map((match) => cleanText(match[1]))
@@ -302,6 +493,45 @@ function pickGameId(row: string) {
 function normalizeScore(value: string) {
   const score = cleanText(value).match(/\d+\s*:\s*\d+/)?.[0];
   return score?.replace(/\s+/g, "");
+}
+
+function normalizeDashScore(value: string) {
+  const score = cleanText(value).match(/\d+\s*-\s*\d+/)?.[0];
+  return score?.replace(/\s+/g, "").replace("-", ":");
+}
+
+function parseRegionalDate(value: string) {
+  const text = cleanText(value);
+  const monthNames: Record<string, string> = {
+    stycznia: "01",
+    lutego: "02",
+    marca: "03",
+    kwietnia: "04",
+    maja: "05",
+    czerwca: "06",
+    lipca: "07",
+    sierpnia: "08",
+    września: "09",
+    pazdziernika: "10",
+    października: "10",
+    listopada: "11",
+    grudnia: "12",
+  };
+  const match = text.match(
+    /(\d{1,2})(?:\/\d{1,2})?\.?\s+([A-Za-ząćęłńóśźżĄĆĘŁŃÓŚŹŻ]+)\s+(\d{4})(?:\s*-\s*(\d{1,2}:\d{2}))?/,
+  );
+
+  if (!match) return null;
+
+  const [, day, monthName, year, time = "12:00"] = match;
+  const month = monthNames[monthName.toLowerCase()];
+  if (!month) return null;
+
+  const timestamp = new Date(
+    `${year}-${month}-${day.padStart(2, "0")}T${time}:00+02:00`,
+  ).getTime();
+
+  return Number.isFinite(timestamp) ? timestamp : null;
 }
 
 function pickFutbolowoStatus(timestamp: number, result?: string) {

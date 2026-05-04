@@ -110,9 +110,18 @@ export default defineSchema({
     venue: v.optional(v.string()),
     result: v.optional(v.string()),
     source: v.optional(
-      v.union(v.literal("manual"), v.literal("lnp"), v.literal("futbolowo")),
+      v.union(
+        v.literal("manual"),
+        v.literal("lnp"),
+        v.literal("futbolowo"),
+        v.literal("regionalnyfutbol"),
+        v.literal("virium"),
+      ),
     ),
     sourceMatchId: v.optional(v.string()),
+    sourceTeamId: v.optional(v.string()),
+    sourceCompetitionId: v.optional(v.string()),
+    sourceUrl: v.optional(v.string()),
     syncedAt: v.optional(v.number()),
     teamId: v.optional(v.id("teams")),
     matchType: v.union(
@@ -132,6 +141,25 @@ export default defineSchema({
     .index("by_team", ["teamId", "date"])
     .index("by_status", ["status", "date"])
     .index("by_sourceMatchId", ["sourceMatchId"]),
+
+  matchEvents: defineTable({
+    matchId: v.id("matches"),
+    sourceEventId: v.optional(v.string()),
+    sourcePlayerId: v.optional(v.string()),
+    playerName: v.optional(v.string()),
+    teamSide: v.optional(v.union(v.literal("home"), v.literal("away"))),
+    type: v.union(
+      v.literal("goal"),
+      v.literal("assist"),
+      v.literal("yellowCard"),
+      v.literal("redCard"),
+      v.literal("other"),
+    ),
+    minute: v.optional(v.number()),
+    syncedAt: v.optional(v.number()),
+  })
+    .index("by_match", ["matchId"])
+    .index("by_sourceEventId", ["sourceEventId"]),
 
   sponsors: defineTable({
     name: v.string(),

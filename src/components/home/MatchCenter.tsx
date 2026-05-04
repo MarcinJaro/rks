@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { SectionHeading } from "@/components/shared/SectionHeading";
 import { fallbackMatchCenter, type MatchItem } from "@/data/site";
+import { matchCenterTeams } from "@/data/matchSources";
 
 type MatchCenterData = {
   nextMatch: MatchItem | null;
@@ -48,8 +49,10 @@ function NextMatchCard({ match }: { match: MatchItem | null }) {
 
   return (
     <article className="rounded-[24px] border border-white/8 bg-card p-6 shadow-sm shadow-black/20">
-      <p className="text-sm font-black uppercase text-primary">
-        {match.matchType === "liga" ? "Rozgrywki ligowe" : "Mecz"}
+      <p className="flex flex-wrap items-center gap-2 text-sm font-black uppercase text-primary">
+        <span>{match.teamName || "RKS Okęcie"}</span>
+        <span className="text-muted-foreground">/</span>
+        <span>{match.matchType === "liga" ? "Rozgrywki ligowe" : "Mecz"}</span>
       </p>
       <h3 className="mt-4 text-3xl font-black tracking-normal text-white">
         {match.homeTeam} - {match.awayTeam}
@@ -99,10 +102,15 @@ function ResultsList({ matches }: { matches: MatchItem[] }) {
               <span className="rounded-md bg-primary px-3 py-1 text-lg text-primary-foreground">
                 {match.result || "-:-"}
               </span>
-              <span className="text-right">{match.awayTeam}</span>
-            </div>
-          </article>
-        ))}
+            <span className="text-right">{match.awayTeam}</span>
+          </div>
+          {match.teamName ? (
+            <p className="mt-3 text-xs font-black uppercase text-white/65">
+              {match.teamName}
+            </p>
+          ) : null}
+        </article>
+      ))}
       </div>
     </div>
   );
@@ -114,7 +122,7 @@ function UpcomingList({ matches }: { matches: MatchItem[] }) {
   return (
     <div className="mt-5 rounded-[24px] border border-white/8 bg-card p-6">
       <p className="text-sm font-black uppercase text-primary">
-        Nadchodzące spotkania
+        Terminarz
       </p>
       <div className="mt-5 divide-y divide-white/10">
         {matches.slice(0, 6).map((match) => (
@@ -132,7 +140,7 @@ function UpcomingList({ matches }: { matches: MatchItem[] }) {
             </div>
             <span className="inline-flex w-fit items-center gap-2 rounded-md bg-white/10 px-3 py-2 text-xs font-black uppercase text-white">
               <Clock size={14} />
-              {match.matchType === "puchar" ? "Puchar" : "Liga"}
+              {match.teamName || (match.matchType === "puchar" ? "Puchar" : "Liga")}
             </span>
           </article>
         ))}
@@ -141,13 +149,60 @@ function UpcomingList({ matches }: { matches: MatchItem[] }) {
   );
 }
 
-function MatchCenterContent({ data }: { data: MatchCenterData }) {
+function TeamSelector({
+  selectedTeam,
+  onChange,
+}: {
+  selectedTeam: string;
+  onChange: (teamSlug: string) => void;
+}) {
+  return (
+    <div className="mt-8 flex flex-wrap gap-2">
+      <button
+        type="button"
+        onClick={() => onChange("all")}
+        className={`rounded-md border px-4 py-2 text-sm font-black uppercase transition ${
+          selectedTeam === "all"
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-white/10 bg-white/5 text-white hover:border-primary"
+        }`}
+      >
+        Wszystkie
+      </button>
+      {matchCenterTeams.map((team) => (
+        <button
+          key={team.slug}
+          type="button"
+          onClick={() => onChange(team.slug)}
+          className={`rounded-md border px-4 py-2 text-sm font-black uppercase transition ${
+            selectedTeam === team.slug
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-white/10 bg-white/5 text-white hover:border-primary"
+          }`}
+        >
+          {team.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function MatchCenterContent({
+  data,
+  selectedTeam,
+  onTeamChange,
+}: {
+  data: MatchCenterData;
+  selectedTeam: string;
+  onTeamChange: (teamSlug: string) => void;
+}) {
   return (
     <section className="container-page py-12">
       <SectionHeading eyebrow="Wyniki" title="Mecze RKS Okęcie">
         Terminarz i rezultaty drużyn RKS Okęcie w jednym miejscu,
         aktualizowane razem z klubowym centrum meczowym.
       </SectionHeading>
+      <TeamSelector selectedTeam={selectedTeam} onChange={onTeamChange} />
 
       <div className="mt-8 grid gap-5 lg:grid-cols-[1.25fr_.75fr]">
         <NextMatchCard match={data.nextMatch} />
@@ -159,33 +214,51 @@ function MatchCenterContent({ data }: { data: MatchCenterData }) {
 }
 
 function LiveMatchCenter() {
+  const [selectedTeam, setSelectedTeam] = useState("all");
+  const teamSlug = selectedTeam === "all" ? undefined : selectedTeam;
   const convexData = useQuery(api.matches.center, {
     upcomingLimit: 6,
     latestLimit: 6,
+    teamSlug,
   });
-  const publicData = usePublicMatchCenter();
+  const publicData = usePublicMatchCenter(teamSlug);
   const data = useMemo(() => {
     if (convexData && hasMatches(convexData)) return convexData;
     if (publicData && hasMatches(publicData)) return publicData;
     return fallbackMatchCenter;
   }, [convexData, publicData]);
 
-  return <MatchCenterContent data={data} />;
+  return (
+    <MatchCenterContent
+      data={data}
+      selectedTeam={selectedTeam}
+      onTeamChange={setSelectedTeam}
+    />
+  );
 }
 
 function PublicMatchCenter() {
-  const publicData = usePublicMatchCenter();
+  const [selectedTeam, setSelectedTeam] = useState("all");
+  const teamSlug = selectedTeam === "all" ? undefined : selectedTeam;
+  const publicData = usePublicMatchCenter(teamSlug);
 
-  return <MatchCenterContent data={publicData || fallbackMatchCenter} />;
+  return (
+    <MatchCenterContent
+      data={publicData || fallbackMatchCenter}
+      selectedTeam={selectedTeam}
+      onTeamChange={setSelectedTeam}
+    />
+  );
 }
 
-function usePublicMatchCenter() {
+function usePublicMatchCenter(teamSlug?: string) {
   const [data, setData] = useState<MatchCenterData | null>(null);
 
   useEffect(() => {
     let isMounted = true;
+    const params = teamSlug ? `?team=${encodeURIComponent(teamSlug)}` : "";
 
-    fetch("/api/rks-matches")
+    fetch(`/api/rks-matches${params}`)
       .then((response) => (response.ok ? response.json() : null))
       .then((payload: MatchCenterData | null) => {
         if (isMounted && payload) setData(payload);
@@ -197,7 +270,7 @@ function usePublicMatchCenter() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [teamSlug]);
 
   return data;
 }

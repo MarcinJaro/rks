@@ -17,6 +17,8 @@ const matchStatus = v.union(
 const matchSource = v.union(
   v.literal("lnp"),
   v.literal("futbolowo"),
+  v.literal("regionalnyfutbol"),
+  v.literal("virium"),
   v.literal("manual"),
 );
 
@@ -63,23 +65,53 @@ export const center = query({
   args: {
     upcomingLimit: v.optional(v.number()),
     latestLimit: v.optional(v.number()),
+    teamSlug: v.optional(v.string()),
   },
-  handler: async (ctx, { upcomingLimit, latestLimit }) => {
+  handler: async (ctx, { upcomingLimit, latestLimit, teamSlug }) => {
     const now = Date.now();
-    const upcomingMatches = await ctx.db
-      .query("matches")
-      .withIndex("by_status", (q) => q.eq("status", "upcoming"))
-      .order("asc")
-      .take(upcomingLimit || 8);
+    const team = teamSlug
+      ? await ctx.db
+          .query("teams")
+          .withIndex("by_slug", (q) => q.eq("slug", teamSlug))
+          .first()
+      : null;
+
+    if (teamSlug && !team) {
+      return { nextMatch: null, upcoming: [], latestResults: [] };
+    }
+
+    const upcomingMatches = team
+      ? (
+          await ctx.db
+            .query("matches")
+            .withIndex("by_team", (q) => q.eq("teamId", team._id))
+            .order("asc")
+            .take(30)
+        ).filter((match) => match.status === "upcoming")
+      : await ctx.db
+          .query("matches")
+          .withIndex("by_status", (q) => q.eq("status", "upcoming"))
+          .order("asc")
+          .take(upcomingLimit || 8);
 
     const upcoming = upcomingMatches.filter((match) => match.date >= now);
     const nextMatch = upcoming[0] || upcomingMatches[0] || null;
 
-    const latestResults = await ctx.db
-      .query("matches")
-      .withIndex("by_status", (q) => q.eq("status", "finished"))
-      .order("desc")
-      .take(latestLimit || 8);
+    const latestResults = team
+      ? (
+          await ctx.db
+            .query("matches")
+            .withIndex("by_team", (q) => q.eq("teamId", team._id))
+            .order("desc")
+            .take(30)
+        )
+          .filter((match) => match.status === "finished")
+          .slice(0, latestLimit || 8)
+      : await ctx.db
+          .query("matches")
+          .withIndex("by_status", (q) => q.eq("status", "finished"))
+          .order("desc")
+          .take(latestLimit || 8);
 
     return { nextMatch, upcoming, latestResults };
   },
@@ -109,6 +141,9 @@ export const getBySourceMatchId = internalQuery({
 export const upsertFromLnp = internalMutation({
   args: {
     sourceMatchId: v.string(),
+    sourceTeamId: v.optional(v.string()),
+    sourceCompetitionId: v.optional(v.string()),
+    sourceUrl: v.optional(v.string()),
     homeTeam: v.string(),
     awayTeam: v.string(),
     date: v.number(),
@@ -151,6 +186,9 @@ export const upsertFromSource = internalMutation({
   args: {
     source: matchSource,
     sourceMatchId: v.string(),
+    sourceTeamId: v.optional(v.string()),
+    sourceCompetitionId: v.optional(v.string()),
+    sourceUrl: v.optional(v.string()),
     homeTeam: v.string(),
     awayTeam: v.string(),
     date: v.number(),
@@ -185,6 +223,9 @@ export const upsertFromSource = internalMutation({
       status: args.status,
       source: args.source,
       sourceMatchId: args.sourceMatchId,
+      sourceTeamId: args.sourceTeamId,
+      sourceCompetitionId: args.sourceCompetitionId,
+      sourceUrl: args.sourceUrl,
       teamId: team?._id,
       syncedAt: Date.now(),
     };

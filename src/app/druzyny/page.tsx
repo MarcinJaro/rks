@@ -8,7 +8,7 @@ export default function TeamsPage() {
         title="Drużyny"
         description="Seniorzy, rezerwy, roczniki młodzieżowe oraz oldboye w jednej, prostej strukturze."
       />
-      <TeamsGrid />
+      <TeamsGrid variant="all" />
     </>
   );
 }
