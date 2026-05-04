@@ -65,6 +65,28 @@ Ręczne uruchomienie synchronizacji:
 npx convex run matchesSync:triggerConfiguredSync
 ```
 
+## Posty z Facebooka
+
+Frontend aktualności czyta posty z Convex przez `feed:getUnifiedFeed`, a gdy
+nie ma jeszcze danych albo `NEXT_PUBLIC_CONVEX_URL`, pokazuje lokalne
+fallbacki. Tymczasowy podgląd prawdziwych postów najlepiej uruchomić przez
+oficjalny Graph API, bo publiczny HTML Facebooka najczęściej zwraca ekran
+logowania i jest zbyt kruchy jako źródło dla UI.
+
+W Convex trzeba ustawić:
+
+```txt
+FB_PAGE_ID=rks.okeciewarszawa
+FB_PAGE_ACCESS_TOKEN=...
+FB_GRAPH_API_VERSION=v22.0
+```
+
+Potem można zaciągnąć ostatnie posty ręcznie:
+
+```bash
+npx convex run facebook/sync:triggerFacebookSync
+```
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

@@ -1,6 +1,5 @@
-import { FeedItem } from "@/components/facebook/FeedItem";
+import { FacebookFeedGrid } from "@/components/facebook/FacebookFeedGrid";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { fallbackPosts } from "@/data/site";
 
 export default function NewsPage() {
   return (
@@ -22,11 +21,11 @@ export default function NewsPage() {
             ),
           )}
         </div>
-        <div className="grid gap-5 md:grid-cols-3">
-          {fallbackPosts.map((post) => (
-            <FeedItem key={post.title} {...post} />
-          ))}
-        </div>
+        <FacebookFeedGrid
+          limit={12}
+          source="all"
+          className="grid gap-5 md:grid-cols-3"
+        />
       </section>
     </>
   );

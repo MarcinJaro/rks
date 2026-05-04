@@ -27,33 +27,36 @@ export const teams = [
 export const fallbackPosts = [
   {
     source: "facebook",
-    title: "Seniorzy RKS Okęcie",
+    title: "Seniorzy wracają na zwycięską ścieżkę",
     content:
-      "Aktualności meczowe seniorów, zapowiedzi spotkań i relacje z Radarowej znajdziesz w klubowym feedzie.",
-    imageUrl: "/images/figma/feed-match.png",
-    publishedAt: new Date("2026-04-20T12:00:00+02:00").getTime(),
+      "RKS Okęcie pokonał KS Milan Milanówek 1:0 w meczu 24. kolejki ligi okręgowej. Bramkę na wagę trzech punktów zdobył w 68. minucie Konstantyn Ślęzak po skutecznej dobitce. Po wymagającym spotkaniu przy Radarowej drużyna pokazała charakter, cierpliwość i wróciła do punktowania po trzech meczach bez zdobyczy.",
+    imageUrl: "/images/facebook/rks-okecie-milan-milanowek-2026-05-04.jpg",
+    publishedAt: new Date("2026-05-04T06:39:00+02:00").getTime(),
     engagement: { reactions: 0, comments: 0, shares: 0 },
-    url: "https://www.facebook.com/rks.okeciewarszawa",
-  },
-  {
-    source: "cms",
-    title: "Nabór do drużyn młodzieżowych",
-    content:
-      "Akademia RKS Okęcie prowadzi szkolenie dzieci i młodzieży w grupach rocznikowych. W sprawie zapisów najlepiej skontaktować się z trenerem danego rocznika.",
-    imageUrl: "/images/figma/feed-balls.png",
-    publishedAt: new Date("2026-04-10T12:00:00+02:00").getTime(),
-    engagement: { reactions: 0, comments: 0, shares: 0 },
-    url: "/druzyny",
+    url: "https://www.facebook.com/rks.okeciewarszawa/posts/1789391695718842",
   },
   {
     source: "facebook",
-    title: "Treningi przy Radarowej",
+    title: "Wyjściowa jedenastka na mecz z KS Milan Milanówek",
     content:
-      "Boiska przy ul. Radarowej 1 są centrum codziennej pracy klubu: treningów, meczów ligowych, turniejów i spotkań całej społeczności RKS Okęcie.",
-    imageUrl: "/images/figma/feed-shirt.png",
-    publishedAt: new Date("2026-03-31T12:00:00+02:00").getTime(),
+      "Sztab seniorów RKS Okęcie ogłosił skład na ligowe spotkanie z KS Milan Milanówek. W wyjściowej jedenastce znaleźli się między innymi Kruszewski, Przygoda, Bujak, kapitan Huczuk oraz Ślęzak. Drużyna przystąpiła do meczu z jasnym celem: walczyć o pełną pulę punktów.",
+    imageUrl: "/images/facebook/rks-okecie-sklad-milan-milanowek-2026-05-03.jpg",
+    imageFit: "contain" as const,
+    publishedAt: new Date("2026-05-03T07:01:00+02:00").getTime(),
     engagement: { reactions: 0, comments: 0, shares: 0 },
-    url: "https://www.facebook.com/rks.okeciewarszawa",
+    url: "https://www.facebook.com/rks.okeciewarszawa/posts/1788535399137805",
+  },
+  {
+    source: "facebook",
+    title: "Kacper Mirosz broni rzut karny",
+    content:
+      "W materiale video z rocznika 2010 Kacper Mirosz zatrzymuje rzut karny w ostatnim meczu. To kolejna obroniona jedenastka naszego bramkarza i bardzo dobry sygnał formy w końcówce sezonu. Brawo Kacper, tak trzymać.",
+    imageUrl: "/images/facebook/rks-okecie-karny-rocznik-2010-2026-05.jpg",
+    imageFit: "contain" as const,
+    mediaType: "video" as const,
+    publishedAt: new Date("2026-05-01T12:00:00+02:00").getTime(),
+    engagement: { reactions: 0, comments: 0, shares: 0 },
+    url: "https://www.facebook.com/reel/1472671047874285/",
   },
 ];
 

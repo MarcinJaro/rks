@@ -1,12 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
-import { MessageSquare, ThumbsUp } from "lucide-react";
+import { ArrowUpRight, PlayCircle } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
-type FeedItemProps = {
+export type FeedItemProps = {
   title: string;
   content: string;
-  imageUrl: string;
+  imageUrl?: string | null;
+  imageFit?: "cover" | "contain";
+  mediaType?: "article" | "video";
   publishedAt: number;
   source: string;
   url: string;
@@ -21,57 +23,70 @@ export function FeedItem({
   title,
   content,
   imageUrl,
+  imageFit = "cover",
+  mediaType = "article",
   publishedAt,
   source,
   url,
-  engagement,
 }: FeedItemProps) {
+  const imageSrc = imageUrl || "/images/rks-logo.png";
+  const isExternal = url.startsWith("http");
+
   return (
-    <article className="overflow-hidden rounded-[28px] bg-[#191f31] shadow-2xl shadow-black/20">
-      <div className="p-6">
-        <div className="mb-8 flex items-start gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent text-sm font-black text-[#002e5e]">
-            R
-          </span>
-          <div>
-            <p className="text-sm font-black text-white">RKS Okęcie Warszawa</p>
-            <time
-              className="text-xs text-[#a6aabc]"
-              dateTime={new Date(publishedAt).toISOString()}
-            >
-              {source === "facebook" ? "2 godz. temu" : formatDate(publishedAt)}
-            </time>
-          </div>
-        </div>
-        <p className="line-clamp-4 min-h-24 text-sm leading-6 text-[#e4e7fb]">
-          {content}
-        </p>
-      </div>
-      <div className="relative aspect-square">
+    <article className="group flex h-full flex-col overflow-hidden rounded-lg border border-white/8 bg-[#151c2d] shadow-sm shadow-black/20">
+      <div
+        className={`relative bg-[#0e1628] ${
+          imageFit === "contain" ? "aspect-square" : "aspect-[16/11]"
+        }`}
+      >
         <Image
-          src={imageUrl}
+          src={imageSrc}
           alt={title}
           fill
           sizes="(min-width: 1024px) 33vw, 100vw"
-          className="object-cover"
+          className={
+            imageUrl && imageFit === "cover"
+              ? "object-cover transition duration-500 group-hover:scale-105"
+              : imageUrl
+                ? "object-contain p-3"
+                : "object-contain p-14"
+          }
         />
+        {mediaType === "video" ? (
+          <div className="absolute inset-0 grid place-items-center bg-black/20">
+            <span className="grid h-16 w-16 place-items-center rounded-full bg-accent text-[#002e5e] shadow-2xl shadow-black/30">
+              <PlayCircle size={36} />
+            </span>
+          </div>
+        ) : null}
       </div>
-      <div className="flex items-center justify-between border-t border-white/5 p-6 text-xs font-bold text-[#a6aabc]">
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1.5">
-            <ThumbsUp size={15} /> {engagement?.reactions || 0}
+      <div className="flex flex-1 flex-col p-6">
+        <div className="mb-4 flex flex-wrap items-center gap-3 text-xs font-black uppercase text-[#a6aabc]">
+          <span className="rounded-md bg-accent px-2.5 py-1 text-[#002e5e]">
+            {mediaType === "video" ? "Video" : "Aktualność"}
           </span>
-          <span className="flex items-center gap-1.5">
-            <MessageSquare size={15} /> {engagement?.comments || 0}
-          </span>
+          <time dateTime={new Date(publishedAt).toISOString()}>
+            {formatDate(publishedAt)}
+          </time>
         </div>
+        <h3 className="line-clamp-2 text-xl font-black leading-tight text-white">
+          {title}
+        </h3>
+        <p className="mt-4 line-clamp-5 text-sm leading-6 text-[#dce2f6]">
+          {content}
+        </p>
         <Link
           href={url}
-          target={url.startsWith("http") ? "_blank" : undefined}
-          rel={url.startsWith("http") ? "noopener noreferrer" : undefined}
-          className="text-accent hover:underline"
+          target={isExternal ? "_blank" : undefined}
+          rel={isExternal ? "noopener noreferrer" : undefined}
+          className="mt-6 inline-flex w-fit items-center gap-1.5 text-sm font-black text-accent hover:underline"
         >
-          Zobacz na Facebooku
+          {mediaType === "video"
+            ? "Otwórz video"
+            : source === "facebook"
+              ? "Zobacz źródło"
+              : "Czytaj aktualność"}
+          <ArrowUpRight size={15} />
         </Link>
       </div>
     </article>
