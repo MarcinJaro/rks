@@ -8,14 +8,14 @@ export function Hero() {
   return (
     <section className="relative isolate overflow-hidden bg-background text-white">
       <Image
-        src="/images/figma/hero-stadium.png"
+        src="/images/stadion-radarowa.jpg"
         alt="Stadion RKS Okęcie Warszawa przy ul. Radarowej"
         fill
         priority
         sizes="100vw"
-        className="object-cover object-[center_78%] opacity-80"
+        className="object-cover object-center opacity-95 saturate-125"
       />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,14,27,.08)_0%,rgba(9,14,27,.14)_36%,var(--hero-overlay-end)_88%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,9,20,.54)_0%,rgba(4,9,20,.32)_42%,var(--hero-overlay-end)_94%)]" />
 
       <div className="container-page relative pt-28 pb-16 md:pt-36">
         <FadeIn>
@@ -24,12 +24,12 @@ export function Hero() {
               <span className="h-2 w-2 rounded-full bg-[#f3ffca]" />
               Live z Okęcia
             </div>
-            <h1 className="max-w-4xl text-[4rem] font-black uppercase leading-[.88] tracking-normal sm:text-8xl lg:text-[8rem]">
+            <h1 className="max-w-4xl text-[4rem] font-black uppercase leading-[.88] tracking-normal drop-shadow-[0_6px_22px_rgba(0,0,0,0.45)] sm:text-8xl lg:text-[8rem]">
               <span className="text-accent">RKS</span>{" "}
               <span className="text-[#e4e7fb]">Okęcie</span>
               <span className="block text-accent">Warszawa</span>
             </h1>
-            <p className="mt-8 max-w-2xl text-xl font-light leading-8 text-[#a6aabc] sm:text-2xl">
+            <p className="mt-8 max-w-2xl text-xl font-light leading-8 text-white/85 drop-shadow-[0_3px_14px_rgba(0,0,0,0.72)] sm:text-2xl">
               Ponad 90 lat tradycji na warszawskich Włochach. Pasja, walka i
               lokalna duma.
             </p>

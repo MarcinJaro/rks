@@ -15,7 +15,7 @@ export function Footer() {
             height={64}
             className="mb-5"
           />
-          <p className="max-w-sm text-sm leading-7 text-[#64748b]">
+          <p className="max-w-sm text-sm leading-7 text-white/75">
             Oficjalna strona RKS Okęcie Warszawa. Piłka nożna, szkolenie
             młodzieży, seniorzy i życie klubu przy Radarowej.
           </p>
@@ -27,7 +27,11 @@ export function Footer() {
           </h2>
           <div className="grid grid-cols-2 gap-2 text-sm">
             {navItems.map((item) => (
-              <Link key={item.href} href={item.href} className="text-[#64748b] hover:text-white">
+              <Link
+                key={item.href}
+                href={item.href}
+                className="font-bold text-white/85 transition hover:text-primary hover:underline"
+              >
                 {item.label}
               </Link>
             ))}
@@ -38,20 +42,20 @@ export function Footer() {
           <h2 className="mb-4 text-sm font-black uppercase text-primary">
             Kontakt
           </h2>
-          <div className="space-y-3 text-sm text-[#64748b]">
+          <div className="space-y-3 text-sm font-bold text-white/85">
             <p className="flex gap-2">
-              <MapPin size={18} /> {clubInfo.address}
+              <MapPin className="shrink-0 text-primary" size={18} /> {clubInfo.address}
             </p>
             <p className="flex gap-2">
-              <Phone size={18} /> {clubInfo.phone}
+              <Phone className="shrink-0 text-primary" size={18} /> {clubInfo.phone}
             </p>
             <Link
               href="https://www.facebook.com/rks.okeciewarszawa"
-              className="flex gap-2 hover:text-white"
+              className="flex gap-2 transition hover:text-primary hover:underline"
               target="_blank"
               rel="noopener noreferrer"
             >
-              <ExternalLink size={18} /> Facebook RKS Okęcie
+              <ExternalLink className="shrink-0 text-primary" size={18} /> Facebook RKS Okęcie
             </Link>
           </div>
         </div>
