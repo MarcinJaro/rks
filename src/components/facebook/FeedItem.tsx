@@ -33,9 +33,9 @@ export function FeedItem({
   const isExternal = url.startsWith("http");
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-lg border border-white/8 bg-[#151c2d] shadow-sm shadow-black/20">
+    <article className="group flex h-full flex-col overflow-hidden rounded-lg border border-white/8 bg-[var(--feed-card)] shadow-sm shadow-black/20">
       <div
-        className={`relative bg-[#0e1628] ${
+        className={`relative bg-[var(--feed-media)] ${
           imageFit === "contain" ? "aspect-square" : "aspect-[16/11]"
         }`}
       >

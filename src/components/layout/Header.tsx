@@ -29,7 +29,7 @@ export function Header() {
   const desktopNavItems = navItems.filter((item) => item.href !== "/kontakt");
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/15 bg-[#020617]/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-white/15 bg-[var(--chrome)]/80 backdrop-blur-xl">
       <div className="container-page flex h-20 items-center justify-between gap-5">
         <Link href="/" className="flex shrink-0 items-center gap-3" onClick={() => setIsMenuOpen(false)}>
           <Image
@@ -77,7 +77,7 @@ export function Header() {
             variant="secondary"
             className={cn(
               "hidden rounded-full px-7 text-[#002e5e] sm:inline-flex",
-              isNavItemActive(pathname, "/kontakt") && "ring-2 ring-primary ring-offset-2 ring-offset-[#020617]",
+              isNavItemActive(pathname, "/kontakt") && "ring-2 ring-primary ring-offset-2 ring-offset-[var(--chrome)]",
             )}
           >
             <Link href="/kontakt" aria-current={isNavItemActive(pathname, "/kontakt") ? "page" : undefined}>
@@ -101,7 +101,7 @@ export function Header() {
       <div
         id="mobile-navigation"
         className={cn(
-          "overflow-hidden border-t border-white/10 bg-[#020617]/95 transition-[max-height,opacity] duration-200 md:hidden",
+          "overflow-hidden border-t border-white/10 bg-[var(--chrome)]/95 transition-[max-height,opacity] duration-200 md:hidden",
           isMenuOpen ? "max-h-[520px] opacity-100" : "max-h-0 opacity-0",
         )}
       >

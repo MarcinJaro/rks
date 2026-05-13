@@ -5,7 +5,7 @@ import { clubInfo, navItems } from "@/data/site";
 
 export function Footer() {
   return (
-    <footer className="mt-16 border-t border-white/8 bg-[#03060d] text-white">
+    <footer className="mt-16 border-t border-white/8 bg-[var(--footer)] text-white">
       <div className="container-page grid gap-10 py-12 md:grid-cols-[1.2fr_1fr_1fr]">
         <div>
           <Image

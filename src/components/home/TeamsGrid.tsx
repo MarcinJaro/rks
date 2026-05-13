@@ -32,7 +32,7 @@ export function TeamsGrid({
   }));
 
   return (
-    <section id="lista-druzyn" className="bg-[#0d1321] py-20">
+    <section id="lista-druzyn" className="bg-[var(--section)] py-20">
       <div className="container-page">
         <div className="mb-12 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <SectionHeading
@@ -72,7 +72,7 @@ export function TeamsGrid({
           <StaggerItem>
             <Link
               href="/kontakt"
-              className="group grid aspect-[286/400] place-items-center rounded-[24px] border border-dashed border-[#434857] bg-[#131929] p-8 text-center transition hover:border-primary"
+              className="group grid aspect-[286/400] place-items-center rounded-[24px] border border-dashed border-[#434857] bg-[var(--surface-raised)] p-8 text-center transition hover:border-primary"
             >
               <div>
                 <PlusCircle className="mx-auto text-accent transition group-hover:text-primary" size={44} />
@@ -104,7 +104,7 @@ function TeamCard({
     <Link
       href={href}
       aria-label={title}
-      className="group relative block aspect-[286/400] overflow-hidden rounded-[24px] border border-white/8 bg-[#111827] shadow-2xl shadow-black/20"
+      className="group relative block aspect-[286/400] overflow-hidden rounded-[24px] border border-white/8 bg-[var(--team-card)] shadow-2xl shadow-black/20"
     >
       <Image
         src={image}

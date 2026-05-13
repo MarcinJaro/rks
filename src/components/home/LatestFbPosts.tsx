@@ -4,10 +4,10 @@ import { FacebookFeedGrid } from "@/components/facebook/FacebookFeedGrid";
 
 export function LatestFbPosts() {
   return (
-    <section className="bg-[#090e1b] py-20">
+    <section className="bg-[var(--section-alt)] py-20">
       <div className="container-page">
         <div className="mb-12 flex items-center gap-5">
-          <span className="grid h-14 w-14 place-items-center rounded-full bg-[#12326a] text-accent">
+          <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--icon-blue)] text-accent">
             <Newspaper size={28} />
           </span>
           <h2 className="text-4xl font-black tracking-normal text-white">

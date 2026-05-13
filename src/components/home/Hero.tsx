@@ -13,9 +13,9 @@ export function Hero() {
         fill
         priority
         sizes="100vw"
-        className="object-cover opacity-70"
+        className="object-cover object-[center_78%] opacity-80"
       />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,14,27,.08)_0%,rgba(9,14,27,.14)_36%,#090e1b_88%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,14,27,.08)_0%,rgba(9,14,27,.14)_36%,var(--hero-overlay-end)_88%)]" />
 
       <div className="container-page relative pt-28 pb-16 md:pt-36">
         <FadeIn>
@@ -52,7 +52,7 @@ export function Hero() {
         </FadeIn>
 
         <FadeIn delay={0.2} className="mt-32">
-          <div className="figma-card relative overflow-hidden rounded-[32px] bg-[#090e1b]/70 p-8 md:p-12">
+          <div className="figma-card relative overflow-hidden rounded-[32px] bg-[var(--hero-panel)] p-8 md:p-12">
             <div className="absolute inset-y-0 right-0 hidden w-1/2 bg-[radial-gradient(circle_at_center,#1f3d73_0%,transparent_58%)] opacity-50 md:block" />
             <div className="relative grid gap-8 lg:grid-cols-[1fr_1.4fr_auto] lg:items-center">
               <div>

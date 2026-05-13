@@ -4,7 +4,7 @@ const sponsors = ["STF", "Partner", "Elite", "Warszawa", "Okęcie"];
 
 export function SponsorBar() {
   return (
-    <section className="border-y border-white/5 bg-black py-14">
+    <section className="border-y border-white/5 bg-[var(--sponsor-bg)] py-14">
       <div className="container-page">
         <FadeIn>
           <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
@@ -15,7 +15,7 @@ export function SponsorBar() {
               {sponsors.map((sponsor, index) => (
                 <div
                   key={sponsor}
-                  className="grid h-12 place-items-center rounded-md bg-[#07101f] text-xs font-black uppercase text-[#707586]/50"
+                  className="grid h-12 place-items-center rounded-md bg-[var(--sponsor-pill)] text-xs font-black uppercase text-[#707586]/50"
                 >
                   {index === 0 ? "RKS" : sponsor}
                 </div>
