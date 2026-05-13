@@ -176,6 +176,131 @@ const previewVariants: PreviewVariant[] = [
       "--sponsor-pill": "#14243a",
     },
   },
+  {
+    id: "deep-navy",
+    name: "Głęboki navy",
+    label: "E",
+    note: "Ciemniej, ale wyraźnie bardziej niebiesko",
+    values: {
+      "--background": "#06152b",
+      "--muted": "#0d1d36",
+      "--card": "#10223e",
+      "--border": "#244163",
+      "--section": "#0d1d35",
+      "--section-alt": "#0a1930",
+      "--chrome": "#041026",
+      "--footer": "#061222",
+      "--sponsor-bg": "#040d1c",
+      "--hero-overlay-end": "#0a1930",
+      "--hero-panel": "#122440",
+      "--surface-raised": "#132744",
+      "--team-card": "#12243f",
+      "--feed-card": "#152843",
+      "--feed-media": "#0d203b",
+      "--icon-blue": "#1956a3",
+      "--sponsor-pill": "#0a1b33",
+    },
+  },
+  {
+    id: "club-blue",
+    name: "Klubowy blue",
+    label: "F",
+    note: "Mocniejszy błękit na sekcjach i kartach",
+    values: {
+      "--background": "#09203a",
+      "--muted": "#123154",
+      "--card": "#163a62",
+      "--border": "#2d5f91",
+      "--section": "#102c4e",
+      "--section-alt": "#0d2747",
+      "--chrome": "#071a31",
+      "--footer": "#081a2d",
+      "--sponsor-bg": "#071528",
+      "--hero-overlay-end": "#0d2747",
+      "--hero-panel": "#17365b",
+      "--surface-raised": "#17375e",
+      "--team-card": "#15365c",
+      "--feed-card": "#1a3d64",
+      "--feed-media": "#123155",
+      "--icon-blue": "#2572c6",
+      "--sponsor-pill": "#0f2b4c",
+    },
+  },
+  {
+    id: "steel-blue",
+    name: "Stalowy błękit",
+    label: "G",
+    note: "Chłodniejszy i bardziej elegancki",
+    values: {
+      "--background": "#0c1b2c",
+      "--muted": "#14263a",
+      "--card": "#1a2d43",
+      "--border": "#34516d",
+      "--section": "#15263b",
+      "--section-alt": "#112238",
+      "--chrome": "#081827",
+      "--footer": "#0a1724",
+      "--sponsor-bg": "#08131f",
+      "--hero-overlay-end": "#112238",
+      "--hero-panel": "#1a2d43",
+      "--surface-raised": "#1b3048",
+      "--team-card": "#192d44",
+      "--feed-card": "#1f3349",
+      "--feed-media": "#172a40",
+      "--icon-blue": "#2b6ea8",
+      "--sponsor-pill": "#11243a",
+    },
+  },
+  {
+    id: "midnight-navy",
+    name: "Midnight navy",
+    label: "H",
+    note: "Ciemny premium z granatowym światłem",
+    values: {
+      "--background": "#030d1e",
+      "--muted": "#091832",
+      "--card": "#0d1f3c",
+      "--border": "#203c64",
+      "--section": "#091833",
+      "--section-alt": "#06142b",
+      "--chrome": "#020a18",
+      "--footer": "#030c1b",
+      "--sponsor-bg": "#010713",
+      "--hero-overlay-end": "#06142b",
+      "--hero-panel": "#102341",
+      "--surface-raised": "#102443",
+      "--team-card": "#0f213f",
+      "--feed-card": "#122644",
+      "--feed-media": "#0b1d38",
+      "--icon-blue": "#165db4",
+      "--sponsor-pill": "#071936",
+    },
+  },
+  {
+    id: "azure-blue",
+    name: "Jaśniejszy błękit",
+    label: "I",
+    note: "Najbardziej czytelny z niebieskich",
+    values: {
+      "--background": "#10243b",
+      "--muted": "#1a3552",
+      "--card": "#203c5a",
+      "--border": "#3b6388",
+      "--section": "#1a3450",
+      "--section-alt": "#162f4b",
+      "--chrome": "#0d2036",
+      "--footer": "#0e2034",
+      "--sponsor-bg": "#0c1a2a",
+      "--hero-overlay-end": "#162f4b",
+      "--hero-panel": "#223f5f",
+      "--surface-raised": "#223f5f",
+      "--team-card": "#213d5d",
+      "--feed-card": "#264664",
+      "--feed-media": "#1b3755",
+      "--icon-blue": "#2f83d5",
+      "--sponsor-pill": "#18304d",
+    },
+  },
 ];
 
 function getCssSnippet(variant: PreviewVariant) {
@@ -244,7 +369,7 @@ export function BackgroundPreviewShell({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <aside className="fixed inset-x-3 bottom-3 z-50 max-h-[70vh] overflow-auto rounded-lg border border-white/10 bg-[#07101f]/95 p-4 text-white shadow-2xl shadow-black/35 backdrop-blur-xl sm:inset-x-auto sm:right-5 sm:top-24 sm:bottom-auto sm:w-[360px]">
+      <aside className="fixed inset-x-3 bottom-3 z-50 max-h-[72vh] overflow-auto rounded-lg border border-white/10 bg-[#07101f]/95 p-4 text-white shadow-2xl shadow-black/35 backdrop-blur-xl sm:inset-x-auto sm:right-5 sm:top-24 sm:bottom-auto sm:max-h-[calc(100vh-7rem)] sm:w-[380px]">
         <div className="mb-4 flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-md bg-primary text-primary-foreground">
             <Palette size={20} />
@@ -254,7 +379,7 @@ export function BackgroundPreviewShell({ children }: { children: ReactNode }) {
               Podgląd tła
             </p>
             <p className="text-xs font-bold text-slate-400">
-              Kliknij wariant i przewiń stronę
+              Warianty 0 oraz A-I
             </p>
           </div>
         </div>
