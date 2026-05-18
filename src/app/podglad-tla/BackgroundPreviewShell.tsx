@@ -301,6 +301,81 @@ const previewVariants: PreviewVariant[] = [
       "--sponsor-pill": "#18304d",
     },
   },
+  {
+    id: "bright-navy",
+    name: "Jasny navy",
+    label: "J",
+    note: "Moja propozycja jaśniejszego designu",
+    values: {
+      "--background": "#132b45",
+      "--muted": "#1f3c5a",
+      "--card": "#25486a",
+      "--border": "#54799d",
+      "--section": "#1d3957",
+      "--section-alt": "#193450",
+      "--chrome": "#0c1d32",
+      "--footer": "#10243a",
+      "--sponsor-bg": "#0d1d30",
+      "--hero-overlay-end": "#193450",
+      "--hero-panel": "#294d70",
+      "--surface-raised": "#294d70",
+      "--team-card": "#24496d",
+      "--feed-card": "#2a4f72",
+      "--feed-media": "#1e4164",
+      "--icon-blue": "#3c91e6",
+      "--sponsor-pill": "#1a3654",
+    },
+  },
+  {
+    id: "day-blue",
+    name: "Dzienny błękit",
+    label: "K",
+    note: "Najbardziej rozświetlony, nadal kontrastowy",
+    values: {
+      "--background": "#183856",
+      "--muted": "#274a68",
+      "--card": "#2f5574",
+      "--border": "#6389aa",
+      "--section": "#254967",
+      "--section-alt": "#214360",
+      "--chrome": "#10283f",
+      "--footer": "#142c43",
+      "--sponsor-bg": "#102439",
+      "--hero-overlay-end": "#214360",
+      "--hero-panel": "#345b7c",
+      "--surface-raised": "#345b7c",
+      "--team-card": "#315878",
+      "--feed-card": "#365f7f",
+      "--feed-media": "#294f70",
+      "--icon-blue": "#55a4f0",
+      "--sponsor-pill": "#244767",
+    },
+  },
+  {
+    id: "soft-blue",
+    name: "Miękki klubowy",
+    label: "L",
+    note: "Jaśniej, spokojniej i mniej kontrastowo",
+    values: {
+      "--background": "#183149",
+      "--muted": "#263f59",
+      "--card": "#2e4964",
+      "--border": "#5f7892",
+      "--section": "#263f5a",
+      "--section-alt": "#213a55",
+      "--chrome": "#102236",
+      "--footer": "#13283d",
+      "--sponsor-bg": "#102033",
+      "--hero-overlay-end": "#213a55",
+      "--hero-panel": "#334f69",
+      "--surface-raised": "#334f69",
+      "--team-card": "#304d68",
+      "--feed-card": "#36536e",
+      "--feed-media": "#294760",
+      "--icon-blue": "#6aa7df",
+      "--sponsor-pill": "#243f5a",
+    },
+  },
 ];
 
 function getCssSnippet(variant: PreviewVariant) {
@@ -315,7 +390,7 @@ function getCssSnippet(variant: PreviewVariant) {
 }
 
 export function BackgroundPreviewShell({ children }: { children: ReactNode }) {
-  const [activeId, setActiveId] = useState("subtle");
+  const [activeId, setActiveId] = useState("bright-navy");
   const [copied, setCopied] = useState(false);
   const originalValues = useRef<Partial<Record<PreviewVariable, string>> | null>(null);
   const activeVariant = previewVariants.find((variant) => variant.id === activeId) ?? previewVariants[1];
@@ -376,10 +451,10 @@ export function BackgroundPreviewShell({ children }: { children: ReactNode }) {
           </span>
           <div>
             <p className="text-sm font-black uppercase tracking-[0.12em] text-primary">
-              Podgląd tła
+              Podgląd designu
             </p>
             <p className="text-xs font-bold text-slate-400">
-              Warianty 0 oraz A-I
+              Warianty 0 oraz A-L
             </p>
           </div>
         </div>
