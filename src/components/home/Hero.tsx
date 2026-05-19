@@ -25,9 +25,9 @@ export function Hero() {
               Live z Okęcia
             </div>
             <h1 className="max-w-4xl text-[4rem] font-black uppercase leading-[.88] tracking-normal drop-shadow-[0_6px_22px_rgba(0,0,0,0.45)] sm:text-8xl lg:text-[8rem]">
-              <span className="text-accent">RKS</span>{" "}
-              <span className="text-[#e4e7fb]">Okęcie</span>
-              <span className="block text-accent">Warszawa</span>
+              <span className="text-[var(--royal-blue)]">RKS</span>{" "}
+              <span className="text-[var(--royal-blue)]">Okęcie</span>
+              <span className="block text-white">Warszawa</span>
             </h1>
             <p className="mt-8 max-w-2xl text-xl font-light leading-8 text-white/85 drop-shadow-[0_3px_14px_rgba(0,0,0,0.72)] sm:text-2xl">
               Ponad 90 lat tradycji na warszawskich Włochach. Pasja, walka i
@@ -59,7 +59,7 @@ export function Hero() {
                 <p className="text-base font-black uppercase tracking-[0.1em] text-[#f3ffca]">
                   Radarowa 1
                 </p>
-                <p className="mt-3 text-base text-[#a6aabc]">
+                <p className="mt-3 text-base text-muted-foreground">
                   Dom RKS Okęcie Warszawa
                 </p>
               </div>
@@ -75,7 +75,7 @@ export function Hero() {
                     className="rounded-[18px] border border-white/8 bg-white/5 p-5"
                   >
                     <p className="text-4xl font-black text-accent">{value}</p>
-                    <p className="mt-2 text-sm font-bold text-[#a6aabc]">
+                    <p className="mt-2 text-sm font-bold text-muted-foreground">
                       {label}
                     </p>
                   </div>
@@ -83,7 +83,7 @@ export function Hero() {
               </div>
 
               <div className="grid gap-5 lg:justify-items-end">
-                <p className="flex items-center gap-2 text-sm text-[#a6aabc]">
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
                   <MapPin size={16} /> Stadion RKS Okęcie, ul. Radarowa 1
                 </p>
                 <Button

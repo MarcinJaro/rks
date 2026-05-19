@@ -61,7 +61,7 @@ export function FeedItem({
         ) : null}
       </div>
       <div className="flex flex-1 flex-col p-6">
-        <div className="mb-4 flex flex-wrap items-center gap-3 text-xs font-black uppercase text-[#a6aabc]">
+        <div className="mb-4 flex flex-wrap items-center gap-3 text-xs font-black uppercase text-muted-foreground">
           <span className="rounded-md bg-accent px-2.5 py-1 text-[#002e5e]">
             {mediaType === "video" ? "Video" : "Aktualność"}
           </span>
@@ -72,7 +72,7 @@ export function FeedItem({
         <h3 className="line-clamp-2 text-xl font-black leading-tight text-white">
           {title}
         </h3>
-        <p className="mt-4 line-clamp-5 text-sm leading-6 text-[#dce2f6]">
+        <p className="mt-4 line-clamp-5 text-sm leading-6 text-muted-foreground">
           {content}
         </p>
         <Link

@@ -376,6 +376,31 @@ const previewVariants: PreviewVariant[] = [
       "--sponsor-pill": "#243f5a",
     },
   },
+  {
+    id: "final-royal",
+    name: "Finalny royal",
+    label: "M",
+    note: "Jaśniej, z mocniejszym klubowym błękitem",
+    values: {
+      "--background": "#1b4366",
+      "--muted": "#2b587a",
+      "--card": "#35668c",
+      "--border": "#74a0c0",
+      "--section": "#2a5c82",
+      "--section-alt": "#255577",
+      "--chrome": "#12345a",
+      "--footer": "#14395f",
+      "--sponsor-bg": "#103153",
+      "--hero-overlay-end": "#255577",
+      "--hero-panel": "#3a6f96",
+      "--surface-raised": "#3a6f96",
+      "--team-card": "#346a93",
+      "--feed-card": "#3a7098",
+      "--feed-media": "#2e638b",
+      "--icon-blue": "#58aaff",
+      "--sponsor-pill": "#27587a",
+    },
+  },
 ];
 
 function getCssSnippet(variant: PreviewVariant) {
@@ -390,7 +415,7 @@ function getCssSnippet(variant: PreviewVariant) {
 }
 
 export function BackgroundPreviewShell({ children }: { children: ReactNode }) {
-  const [activeId, setActiveId] = useState("bright-navy");
+  const [activeId, setActiveId] = useState("final-royal");
   const [copied, setCopied] = useState(false);
   const originalValues = useRef<Partial<Record<PreviewVariable, string>> | null>(null);
   const activeVariant = previewVariants.find((variant) => variant.id === activeId) ?? previewVariants[1];
@@ -454,7 +479,7 @@ export function BackgroundPreviewShell({ children }: { children: ReactNode }) {
               Podgląd designu
             </p>
             <p className="text-xs font-bold text-slate-400">
-              Warianty 0 oraz A-L
+              Warianty 0 oraz A-M
             </p>
           </div>
         </div>

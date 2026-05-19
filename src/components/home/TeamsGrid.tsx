@@ -79,7 +79,7 @@ export function TeamsGrid({
                 <h3 className="mt-8 text-2xl font-black uppercase text-white">
                   Rekrutacja
                 </h3>
-                <p className="mt-4 text-sm leading-6 text-[#a6aabc]">
+                <p className="mt-4 text-sm leading-6 text-muted-foreground">
                   Dołącz do Akademii RKS Okęcie i zacznij swoją przygodę.
                 </p>
               </div>

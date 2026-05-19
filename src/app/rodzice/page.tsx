@@ -28,7 +28,7 @@ export default function ParentsPage() {
             <h2 className="text-2xl font-black text-white">Kontakt do trenerów</h2>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               {parentContacts.map(([year, coach, phone]) => (
-                <div key={year} className="rounded-[16px] bg-[#0d1321] p-4">
+                <div key={year} className="rounded-[16px] bg-[var(--surface-raised)] p-4">
                   <p className="text-sm font-black text-primary">Rocznik {year}</p>
                   <p className="mt-2 text-sm text-white">{coach}</p>
                   <p className="mt-1 text-sm text-muted-foreground">{phone}</p>
