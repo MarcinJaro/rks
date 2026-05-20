@@ -397,7 +397,7 @@ const previewVariants: PreviewVariant[] = [
       "--team-card": "#346a93",
       "--feed-card": "#3a7098",
       "--feed-media": "#2e638b",
-      "--icon-blue": "#58aaff",
+      "--icon-blue": "#4a80bc",
       "--sponsor-pill": "#27587a",
     },
   },

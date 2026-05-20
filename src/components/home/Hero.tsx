@@ -25,8 +25,8 @@ export function Hero() {
               Live z Okęcia
             </div>
             <h1 className="max-w-4xl text-[4rem] font-black uppercase leading-[.88] tracking-normal drop-shadow-[0_6px_22px_rgba(0,0,0,0.45)] sm:text-8xl lg:text-[8rem]">
-              <span className="text-[var(--royal-blue)]">RKS</span>{" "}
-              <span className="text-[var(--royal-blue)]">Okęcie</span>
+              <span className="hero-logo-blue">RKS</span>{" "}
+              <span className="hero-logo-blue">Okęcie</span>
               <span className="block text-white">Warszawa</span>
             </h1>
             <p className="mt-8 max-w-2xl text-xl font-light leading-8 text-white/85 drop-shadow-[0_3px_14px_rgba(0,0,0,0.72)] sm:text-2xl">

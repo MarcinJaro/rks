@@ -18,12 +18,12 @@
   --team-card: #346a93;
   --feed-card: #3a7098;
   --feed-media: #2e638b;
-  --icon-blue: #58aaff;
+  --icon-blue: #4a80bc;
   --sponsor-pill: #27587a;
-  --royal-blue: #2f80ff;
+  --royal-blue: #4a80bc;
   --primary: #d8ff3e;
   --primary-foreground: #07101f;
-  --secondary: #2f80ff;
+  --secondary: #4a80bc;
   --secondary-foreground: #ffffff;
   --accent: #9bd7ff;
   --accent-foreground: #07101f;
@@ -75,6 +75,14 @@ a {
 .hashtag {
   color: var(--primary);
   font-weight: 700;
+}
+
+.hero-logo-blue {
+  color: var(--royal-blue);
+  text-shadow:
+    0 2px 0 rgb(255 255 255 / 0.28),
+    0 8px 26px rgb(0 0 0 / 0.58);
+  -webkit-text-stroke: 1px rgb(255 255 255 / 0.14);
 }
 
 .figma-card {
