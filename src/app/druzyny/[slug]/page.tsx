@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
-import { Camera, Shield, UserRound, UsersRound } from "lucide-react";
+import { Camera, Mail, Phone, Shield, UserRound, UsersRound } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { fallbackPosts, teams } from "@/data/site";
 import { FeedItem } from "@/components/facebook/FeedItem";
 import { getLegacyRoster, type RosterPerson } from "@/lib/legacyRoster";
+import { teamContacts } from "@/data/legacy";
 
 export function generateStaticParams() {
   return teams.map((team) => ({ slug: team.slug }));
@@ -21,6 +22,7 @@ export default async function TeamPage({
   if (!team) notFound();
 
   const roster = await getLegacyRoster(team.slug);
+  const teamContact = teamContacts[team.slug];
   const photoCount =
     roster?.players.filter((player) => Boolean(player.photoUrl)).length ?? 0;
 
@@ -123,6 +125,30 @@ export default async function TeamPage({
                   grupę.
                 </dd>
               </div>
+              {teamContact ? (
+                <div>
+                  <dt className="font-black uppercase text-muted-foreground">
+                    Kontakt do trenera
+                  </dt>
+                  <dd className="mt-2 space-y-2 text-foreground">
+                    <p className="font-bold">{teamContact.coach}</p>
+                    <a
+                      href={getPrimaryPhoneHref(teamContact.phone)}
+                      className="flex items-center gap-2 text-muted-foreground transition hover:text-primary"
+                    >
+                      <Phone size={16} /> {teamContact.phone}
+                    </a>
+                    {teamContact.email ? (
+                      <a
+                        href={`mailto:${teamContact.email}`}
+                        className="flex items-center gap-2 text-muted-foreground transition hover:text-primary"
+                      >
+                        <Mail size={16} /> {teamContact.email}
+                      </a>
+                    ) : null}
+                  </dd>
+                </div>
+              ) : null}
             </dl>
           </div>
 
@@ -212,4 +238,10 @@ function PersonCard({
       </div>
     </article>
   );
+}
+
+function getPrimaryPhoneHref(phone: string) {
+  const primaryPhone = phone.split("/")[0] ?? phone;
+
+  return `tel:${primaryPhone.replace(/\D/g, "")}`;
 }

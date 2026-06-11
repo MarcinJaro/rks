@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
+import { clubShop } from "@/data/site";
 
 export default function SupportPage() {
   return (
@@ -57,6 +58,32 @@ export default function SupportPage() {
               <p className="text-sm font-black uppercase">Numer KRS</p>
               <p className="mt-1 text-3xl font-black">0000021958</p>
             </div>
+          </div>
+        </article>
+
+        <article className="rounded-[24px] border border-white/8 bg-card p-6 shadow-sm lg:col-span-2">
+          <p className="text-sm font-black uppercase text-primary">
+            Sklep klubowy
+          </p>
+          <h2 className="mt-3 text-2xl font-black text-white">
+            Pamiątki i odzież RKS Okęcie
+          </h2>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">
+            Klubowy sklep działa pod osobnym adresem. Po otrzymaniu finalnego
+            linku do fanshopu NO10 możemy dodać drugi przycisk bezpośrednio do
+            kolekcji klubowej.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button asChild>
+              <a href={clubShop.href} target="_blank" rel="noopener noreferrer">
+                Przejdź do sklepu
+              </a>
+            </Button>
+            <Button asChild variant="outline">
+              <a href="https://www.no10.pl/" target="_blank" rel="noopener noreferrer">
+                NO10
+              </a>
+            </Button>
           </div>
         </article>
       </section>

@@ -2,10 +2,59 @@ export const navItems = [
   { label: "Aktualności", href: "/aktualnosci" },
   { label: "Drużyny", href: "/druzyny" },
   { label: "Klub", href: "/klub/historia" },
-  { label: "Kibice", href: "/kibice/historia" },
+  { label: "Kibice", href: "/kibice" },
   { label: "Rodzice", href: "/rodzice" },
   { label: "Wspieraj", href: "/wspieraj" },
   { label: "Kontakt", href: "/kontakt" },
+];
+
+export const socialLinks = {
+  facebook: "https://www.facebook.com/rks.okeciewarszawa",
+  instagram: "https://www.instagram.com/rksokecie/",
+};
+
+export const clubShop = {
+  label: "Sklep klubowy",
+  href: "https://sklep.rksokecie.pl/",
+};
+
+export const partnerLogos = [
+  {
+    name: "NIW",
+    href: "https://niw.gov.pl/",
+    logo: "/images/partners/niw.png",
+    kind: "Partner",
+  },
+  {
+    name: "Certyfikacja PZPN",
+    href: "/klub/certyfikacja-pzpn",
+    logo: "/images/partners/pzpn-silver.png",
+    kind: "Program",
+  },
+  {
+    name: "m.st. Warszawa",
+    href: "https://um.warszawa.pl/",
+    logo: "/images/partners/warszawa.jpg",
+    kind: "Partner",
+  },
+  {
+    name: "iParts",
+    href: "https://www.iparts.pl",
+    logo: "/images/partners/iparts.png",
+    kind: "Sponsor",
+  },
+  {
+    name: "NO10",
+    href: "https://www.no10.pl/",
+    logo: null,
+    kind: "Partner techniczny",
+  },
+  {
+    name: "First Floor",
+    href: "",
+    logo: null,
+    kind: "Partner",
+  },
 ];
 
 export const teams = [

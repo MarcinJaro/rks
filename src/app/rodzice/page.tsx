@@ -1,5 +1,10 @@
 import { PageHeader } from "@/components/shared/PageHeader";
-import { legacyDocuments, parentContacts } from "@/data/legacy";
+import {
+  legacyDocuments,
+  parentContacts,
+  parentFees,
+  parentRequirements,
+} from "@/data/legacy";
 
 export default function ParentsPage() {
   return (
@@ -14,7 +19,7 @@ export default function ParentsPage() {
             ["Zajęcia od 3 roku życia", "Klub zaprasza dzieci na zajęcia sportowe prowadzone przez wykwalifikowaną kadrę trenerską."],
             ["Regularne treningi", "Treningi odbywają się na boiskach naturalnych, orlikach oraz halach sportowych w okresie jesienno-zimowym."],
             ["Rozgrywki i turnieje", "Zawodnicy biorą udział w rozgrywkach MZPN oraz turniejach dostosowanych do wieku."],
-            ["Składka członkowska", "Informacje o aktualnej wysokości składki i ewentualnych zniżkach przekazuje trener lub sekretariat klubu."],
+            ["Składka członkowska", "Składka wynosi 300 zł miesięcznie. Przy rodzeństwie klub przewiduje zniżkę dla każdego następnego dziecka."],
           ].map(([title, body]) => (
             <article key={title} className="rounded-[20px] border border-white/8 bg-card p-6">
               <h2 className="text-xl font-black text-white">{title}</h2>
@@ -54,6 +59,48 @@ export default function ParentsPage() {
               Przed pierwszymi zajęciami klub prosi o bezpośredni kontakt z trenerem
               danego rocznika i przygotowanie wymaganych dokumentów.
             </p>
+          </div>
+        </div>
+
+        <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_1fr]">
+          <div className="rounded-[24px] border border-white/8 bg-card p-6">
+            <h2 className="text-2xl font-black text-white">
+              Warunki uczestnictwa w zajęciach
+            </h2>
+            <ul className="mt-6 space-y-3 text-sm leading-6 text-muted-foreground">
+              {parentRequirements.map((item) => (
+                <li key={item} className="rounded-[14px] bg-[var(--surface-raised)] p-4">
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="rounded-[24px] border border-white/8 bg-card p-6">
+            <h2 className="text-2xl font-black text-white">
+              Opłaty i konto
+            </h2>
+            <dl className="mt-6 grid gap-4 text-sm">
+              <div className="rounded-[14px] bg-[var(--surface-raised)] p-4">
+                <dt className="font-black uppercase text-primary">Składka</dt>
+                <dd className="mt-1 text-muted-foreground">
+                  {parentFees.amount} miesięcznie, płatne {parentFees.dueDate}.
+                </dd>
+              </div>
+              <div className="rounded-[14px] bg-[var(--surface-raised)] p-4">
+                <dt className="font-black uppercase text-primary">Rodzeństwo</dt>
+                <dd className="mt-1 text-muted-foreground">
+                  {parentFees.discount}.
+                </dd>
+              </div>
+              <div className="rounded-[14px] bg-primary p-4 text-[#002349]">
+                <dt className="font-black uppercase">Konto {parentFees.bank}</dt>
+                <dd className="mt-2 text-xl font-black">{parentFees.account}</dd>
+                <dd className="mt-2 text-sm font-bold">
+                  Tytuł przelewu: {parentFees.transferTitle}.
+                </dd>
+              </div>
+            </dl>
           </div>
         </div>
       </section>

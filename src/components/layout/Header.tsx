@@ -3,9 +3,9 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, Search, X } from "lucide-react";
+import { Camera, MessageCircle, Menu, Search, X } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { navItems } from "@/data/site";
+import { navItems, socialLinks } from "@/data/site";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -68,6 +68,16 @@ export function Header() {
         </nav>
 
         <div className="flex shrink-0 items-center gap-2">
+          <Button asChild size="icon" variant="ghost" className="hidden text-[#cbd5e1] lg:inline-flex" aria-label="Facebook">
+            <Link href={socialLinks.facebook} target="_blank" rel="noopener noreferrer">
+              <MessageCircle size={20} />
+            </Link>
+          </Button>
+          <Button asChild size="icon" variant="ghost" className="hidden text-[#cbd5e1] lg:inline-flex" aria-label="Instagram">
+            <Link href={socialLinks.instagram} target="_blank" rel="noopener noreferrer">
+              <Camera size={20} />
+            </Link>
+          </Button>
           <Button size="icon" variant="ghost" className="hidden text-[#cbd5e1] sm:inline-flex" aria-label="Szukaj">
             <Search size={22} />
           </Button>

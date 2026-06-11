@@ -95,6 +95,117 @@ export const parentContacts = [
   ["2018/2019/2020", "Tomasz Pęśko", "512 041 379"],
 ];
 
+export const teamContacts: Record<string, { coach: string; phone: string; email?: string }> = {
+  "rocznik-2010": {
+    coach: "Piotr Łuczyk",
+    phone: "602 257 707",
+    email: "p.luczyk@rksokecie.pl",
+  },
+  "rocznik-2012": {
+    coach: "Artur Bartosiński / Mikołaj Nowocień",
+    phone: "519 685 935 / 785 573 777",
+    email: "a.bartosinski@rksokecie.pl",
+  },
+  "rocznik-2013": {
+    coach: "Maciej Kilman / Karol Kuza",
+    phone: "668 149 853 / 731 055 549",
+    email: "m.kilman@rksokecie.pl",
+  },
+  "rocznik-2014": {
+    coach: "Maciej Kilman / Karol Kuza",
+    phone: "668 149 853 / 731 055 549",
+    email: "m.kilman@rksokecie.pl",
+  },
+  "rocznik-2015": {
+    coach: "Karol Niziołek",
+    phone: "793 746 625",
+  },
+  "rocznik-2016": {
+    coach: "Mariusz Wiśniewski",
+    phone: "500 214 641",
+    email: "m.wisniewski@rksokecie.pl",
+  },
+  "rocznik-2017": {
+    coach: "Pavlo Pytko",
+    phone: "733 899 646",
+  },
+  "rocznik-2018": {
+    coach: "Tomasz Pęśko",
+    phone: "512 041 379",
+    email: "t.pesko@rksokecie.pl",
+  },
+  "rocznik-2019": {
+    coach: "Tomasz Pęśko",
+    phone: "512 041 379",
+    email: "t.pesko@rksokecie.pl",
+  },
+  "rocznik-2020": {
+    coach: "Tomasz Pęśko",
+    phone: "512 041 379",
+    email: "t.pesko@rksokecie.pl",
+  },
+};
+
+export const parentRequirements = [
+  "Dostarczenie trenerowi wypełnionej zgody przed pierwszym treningiem.",
+  "Rejestracja i zgłoszenie dziecka do Akademii RKS Okęcie w systemie Łączy Nas Piłka.",
+  "Wypełnienie formularza zgłoszeniowego oraz Deklaracji Gry Amatora.",
+  "Dostarczenie aktualnych badań lekarskich dopuszczających do uprawiania sportu.",
+  "Akceptacja regulaminu klubu oraz rejestracja w aplikacji mZawodnik, jeśli zawodnik nie był wcześniej zgłoszony w MZPN.",
+];
+
+export const parentFees = {
+  amount: "300 zł",
+  discount: "50% zniżki dla każdego następnego dziecka z rodzeństwa",
+  dueDate: "do 10. dnia każdego miesiąca",
+  bank: "mBank",
+  account: "15 1140 2004 0000 3602 7706 7010",
+  transferTitle: "imię i nazwisko dziecka oraz rok urodzenia",
+};
+
+export const fanZoneSections = [
+  {
+    title: "Kalendarz sportowy",
+    body: "Terminarz wydarzeń RKS Okęcie do dodania w kalendarzu Google, Apple lub Outlook.",
+    href: "/kibice#kalendarz",
+  },
+  {
+    title: "Pamiątki klubowe",
+    body: "Informacja o klubowych pamiątkach i kontakcie przez kibicowski profil FB.",
+    href: "/kibice#pamiatki",
+  },
+  {
+    title: "Historia ruchu kibicowskiego",
+    body: "Miejsce na materiały archiwalne, wspomnienia i historię dopingu przy Radarowej.",
+    href: "/kibice/historia",
+  },
+  {
+    title: "Historyczne szale, flagi i gadżety",
+    body: "Archiwum klubowych barw, szalików, flag oraz pamiątek związanych z Okęciem.",
+    href: "/kibice/galeria",
+  },
+  {
+    title: "Przyjaciele Okęcia",
+    body: "Informacje o zaprzyjaźnionych środowiskach kibicowskich i klubach.",
+    href: "/kibice#przyjaciele",
+  },
+  {
+    title: "Legendy RKS Okęcie",
+    body: "Byli zawodnicy, trenerzy i osoby zasłużone dla historii RKS Okęcie.",
+    href: "/kibice/historia",
+  },
+  {
+    title: "Śpiewnik",
+    body: "Niebiesko-białe przyśpiewki i motywy dopingu znane z meczów RKS.",
+    href: "/kibice/spiewnik",
+  },
+  {
+    title: "Linki",
+    body: "Najważniejsze profile społecznościowe klubu, roczników i środowiska kibiców.",
+    href: "/kibice#linki",
+  },
+];
+
 export const legacyDocuments = [
   ["Statut klubu", "/documents/statut.pdf"],
   ["Regulamin klubu", "/documents/regulamin.pdf"],
