@@ -25,6 +25,7 @@ export default function NewsPage() {
           limit={12}
           source="all"
           className="grid gap-5 md:grid-cols-3"
+          featured
         />
       </section>
     </>

@@ -21,6 +21,7 @@ export const fbPostType = v.union(
 export default defineSchema({
   fbPosts: defineTable({
     fbPostId: v.string(),
+    slug: v.optional(v.string()),
     content: v.optional(v.string()),
     contentHtml: v.optional(v.string()),
     postType: fbPostType,
@@ -43,6 +44,7 @@ export default defineSchema({
     syncedAt: v.number(),
   })
     .index("by_fbPostId", ["fbPostId"])
+    .index("by_slug", ["slug"])
     .index("by_publishedAt", ["publishedAt"])
     .index("by_team", ["teamId", "publishedAt"])
     .index("by_category", ["category", "publishedAt"])

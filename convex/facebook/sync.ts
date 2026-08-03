@@ -7,9 +7,11 @@ import {
 } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
+import type { ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { fbCategory, fbPostType } from "../schema";
 import { requireAdmin } from "../adminAuth";
+import { slugifyTitle } from "../../src/lib/feedText";
 
 type FacebookAttachment = {
   media?: { image?: { src?: string } };
@@ -123,96 +125,191 @@ export const syncFromFacebook = internalAction({
       return { success: false, error: data.error.message };
     }
 
-    let created = 0;
-    let updated = 0;
-    let errors = 0;
-
-    for (const post of (data.data || []) as FacebookPost[]) {
-      try {
-        const existing = await ctx.runQuery(
-          internal.facebook.sync.getByFbPostId,
-          { fbPostId: post.id },
-        );
-
-        let imageStorageId = existing?.imageStorageId;
-        if (post.full_picture && !existing) {
-          imageStorageId = await storeRemoteImage(ctx, post.full_picture);
-        }
-
-        const imageIds = existing?.imageIds ? [...existing.imageIds] : [];
-        if (!existing && post.attachments?.data) {
-          for (const att of post.attachments.data) {
-            for (const sub of att.subattachments?.data || []) {
-              const src = sub.media?.image?.src;
-              if (!src) continue;
-              const id = await storeRemoteImage(ctx, src);
-              if (id) imageIds.push(id);
-            }
-          }
-        }
-
-        const postType = determinePostType(post);
-        const content = post.message || post.story;
-        const contentHtml = parseMessageToHtml(content || "");
-        const { category, teamSlug } = categorizePost(content || "");
-        const firstAttachment = post.attachments?.data?.[0];
-
-        let teamId;
-        if (teamSlug) {
-          const team = await ctx.runQuery(internal.facebook.sync.getTeamBySlug, {
-            slug: teamSlug,
-          });
-          teamId = team?._id;
-        }
-
-        if (existing) {
-          await ctx.runMutation(internal.facebook.sync.updatePost, {
-            id: existing._id,
-            content,
-            contentHtml,
-            reactionsCount: post.reactions?.summary?.total_count || 0,
-            commentsCount: post.comments?.summary?.total_count || 0,
-            sharesCount: post.shares?.count || 0,
-            fbUpdatedAt: post.updated_time
-              ? new Date(post.updated_time).getTime()
-              : undefined,
-            syncedAt: Date.now(),
-          });
-          updated++;
-        } else {
-          await ctx.runMutation(internal.facebook.sync.insertPost, {
-            fbPostId: post.id,
-            content,
-            contentHtml,
-            postType,
-            imageStorageId,
-            imageIds: imageIds.length > 0 ? imageIds : undefined,
-            videoUrl: postType === "video" ? firstAttachment?.url : undefined,
-            linkUrl: postType === "link" ? firstAttachment?.url : undefined,
-            linkTitle: firstAttachment?.title,
-            linkDescription: firstAttachment?.description,
-            reactionsCount: post.reactions?.summary?.total_count || 0,
-            commentsCount: post.comments?.summary?.total_count || 0,
-            sharesCount: post.shares?.count || 0,
-            teamId,
-            category,
-            fbUrl: post.permalink_url,
-            publishedAt: new Date(post.created_time).getTime(),
-            fbUpdatedAt: post.updated_time
-              ? new Date(post.updated_time).getTime()
-              : undefined,
-            syncedAt: Date.now(),
-          });
-          created++;
-        }
-      } catch (error) {
-        console.error(`Error processing FB post ${post.id}:`, error);
-        errors++;
-      }
-    }
+    const { created, updated, errors } = await processFeedPosts(
+      ctx,
+      (data.data || []) as FacebookPost[],
+    );
 
     await recordStatus({ ok: true, created, updated, errors, at: Date.now() });
     return { success: true, created, updated, errors };
+  },
+});
+
+async function processFeedPosts(ctx: ActionCtx, posts: FacebookPost[]) {
+  let created = 0;
+  let updated = 0;
+  let errors = 0;
+
+  for (const post of posts) {
+    try {
+      const existing = await ctx.runQuery(
+        internal.facebook.sync.getByFbPostId,
+        { fbPostId: post.id },
+      );
+
+      let imageStorageId = existing?.imageStorageId;
+      if (post.full_picture && !existing) {
+        imageStorageId = await storeRemoteImage(ctx, post.full_picture);
+      }
+
+      const imageIds = existing?.imageIds ? [...existing.imageIds] : [];
+      if (!existing && post.attachments?.data) {
+        for (const att of post.attachments.data) {
+          for (const sub of att.subattachments?.data || []) {
+            const src = sub.media?.image?.src;
+            if (!src) continue;
+            const id = await storeRemoteImage(ctx, src);
+            if (id) imageIds.push(id);
+          }
+        }
+      }
+
+      const postType = determinePostType(post);
+      const content = post.message || post.story;
+      const contentHtml = parseMessageToHtml(content || "");
+      const { category, teamSlug } = categorizePost(content || "");
+      const firstAttachment = post.attachments?.data?.[0];
+
+      let teamId;
+      if (teamSlug) {
+        const team = await ctx.runQuery(internal.facebook.sync.getTeamBySlug, {
+          slug: teamSlug,
+        });
+        teamId = team?._id;
+      }
+
+      if (existing) {
+        await ctx.runMutation(internal.facebook.sync.updatePost, {
+          id: existing._id,
+          content,
+          contentHtml,
+          reactionsCount: post.reactions?.summary?.total_count || 0,
+          commentsCount: post.comments?.summary?.total_count || 0,
+          sharesCount: post.shares?.count || 0,
+          fbUpdatedAt: post.updated_time
+            ? new Date(post.updated_time).getTime()
+            : undefined,
+          syncedAt: Date.now(),
+        });
+        updated++;
+      } else {
+        await ctx.runMutation(internal.facebook.sync.insertPost, {
+          fbPostId: post.id,
+          slug: slugifyTitle(content, post.id),
+          content,
+          contentHtml,
+          postType,
+          imageStorageId,
+          imageIds: imageIds.length > 0 ? imageIds : undefined,
+          videoUrl: postType === "video" ? firstAttachment?.url : undefined,
+          linkUrl: postType === "link" ? firstAttachment?.url : undefined,
+          linkTitle: firstAttachment?.title,
+          linkDescription: firstAttachment?.description,
+          reactionsCount: post.reactions?.summary?.total_count || 0,
+          commentsCount: post.comments?.summary?.total_count || 0,
+          sharesCount: post.shares?.count || 0,
+          teamId,
+          category,
+          fbUrl: post.permalink_url,
+          publishedAt: new Date(post.created_time).getTime(),
+          fbUpdatedAt: post.updated_time
+            ? new Date(post.updated_time).getTime()
+            : undefined,
+          syncedAt: Date.now(),
+        });
+        created++;
+      }
+    } catch (error) {
+      console.error(`Error processing FB post ${post.id}:`, error);
+      errors++;
+    }
+  }
+
+  return { created, updated, errors };
+}
+
+export const backfillFromFacebook = internalAction({
+  args: { days: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const pageId = process.env.FB_PAGE_ID;
+    const accessToken = process.env.FB_PAGE_ACCESS_TOKEN;
+    const apiVersion = process.env.FB_GRAPH_API_VERSION || "v22.0";
+
+    if (!pageId || !accessToken) {
+      return {
+        success: false,
+        error: "Missing FB_PAGE_ID or FB_PAGE_ACCESS_TOKEN in Convex env vars.",
+      };
+    }
+
+    const days = args.days ?? 31;
+    const since = Math.floor(Date.now() / 1000) - days * 24 * 60 * 60;
+
+    const fields = [
+      "id",
+      "message",
+      "story",
+      "full_picture",
+      "attachments{media,media_type,type,subattachments,url,title,description}",
+      "created_time",
+      "updated_time",
+      "permalink_url",
+      "shares",
+      "reactions.summary(true)",
+      "comments.summary(true)",
+    ].join(",");
+
+    let url: string | undefined =
+      `https://graph.facebook.com/${apiVersion}/${pageId}/feed` +
+      `?fields=${encodeURIComponent(fields)}&limit=25&since=${since}` +
+      `&access_token=${accessToken}`;
+
+    let created = 0;
+    let updated = 0;
+    let errors = 0;
+    let pages = 0;
+    const MAX_PAGES = 40;
+
+    while (url && pages < MAX_PAGES) {
+      const response: Response = await fetch(url);
+      const data: {
+        error?: { message: string };
+        data?: FacebookPost[];
+        paging?: { next?: string };
+      } = await response.json();
+      if (data.error) {
+        console.error("FB API Error (backfill):", data.error);
+        return { success: false, error: data.error.message };
+      }
+
+      const batch = await processFeedPosts(
+        ctx,
+        (data.data || []) as FacebookPost[],
+      );
+      created += batch.created;
+      updated += batch.updated;
+      errors += batch.errors;
+      pages++;
+
+      url = data.paging?.next;
+    }
+
+    return { success: true, created, updated, errors, pages };
+  },
+});
+
+export const assignMissingSlugs = internalMutation({
+  handler: async (ctx) => {
+    const posts = await ctx.db.query("fbPosts").collect();
+    let patched = 0;
+    for (const post of posts) {
+      if (post.slug) continue;
+      await ctx.db.patch(post._id, {
+        slug: slugifyTitle(post.content, post.fbPostId),
+      });
+      patched++;
+    }
+    return { patched };
   },
 });
 
@@ -254,6 +351,7 @@ export const getTeamBySlug = internalQuery({
 export const insertPost = internalMutation({
   args: {
     fbPostId: v.string(),
+    slug: v.optional(v.string()),
     content: v.optional(v.string()),
     contentHtml: v.optional(v.string()),
     postType: fbPostType,

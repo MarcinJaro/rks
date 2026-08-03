@@ -29,6 +29,7 @@ export const getUnifiedFeed = query({
         items.push({
           _id: post._id,
           source: "facebook" as const,
+          slug: post.slug,
           content: post.content,
           contentHtml: post.contentHtml,
           imageUrl: post.imageStorageId
@@ -92,6 +93,58 @@ export const getUnifiedFeed = query({
         return b.publishedAt - a.publishedAt;
       })
       .slice(0, limit);
+  },
+});
+
+export const getPostBySlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, { slug }) => {
+    const post = await ctx.db
+      .query("fbPosts")
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .first();
+
+    if (post && !post.isHidden) {
+      return {
+        source: "facebook" as const,
+        content: post.content,
+        contentHtml: post.contentHtml,
+        imageUrl: post.imageStorageId
+          ? await ctx.storage.getUrl(post.imageStorageId)
+          : null,
+        imageUrls: post.imageIds
+          ? await Promise.all(post.imageIds.map((id) => ctx.storage.getUrl(id)))
+          : [],
+        postType: post.postType,
+        videoUrl: post.videoUrl,
+        publishedAt: post.publishedAt,
+        category: post.category,
+      };
+    }
+
+    const article = await ctx.db
+      .query("articles")
+      .filter((q) => q.eq(q.field("slug"), slug))
+      .first();
+
+    if (article && article.status === "published") {
+      return {
+        source: "cms" as const,
+        title: article.title,
+        content: article.content,
+        contentHtml: article.contentHtml,
+        imageUrl: article.imageStorageId
+          ? await ctx.storage.getUrl(article.imageStorageId)
+          : null,
+        imageUrls: [] as (string | null)[],
+        postType: "article",
+        videoUrl: undefined,
+        publishedAt: article.publishedAt || 0,
+        category: article.category,
+      };
+    }
+
+    return null;
   },
 });
 
