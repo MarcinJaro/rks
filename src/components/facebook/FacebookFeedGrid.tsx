@@ -114,10 +114,14 @@ function FeedGrid({
   featured: boolean;
 }) {
   const [first, ...rest] = posts;
+  // Stagger animates whileInView with `once: true`; when the post list changes
+  // (live data replacing fallbacks, or a filter click) freshly mounted items
+  // would stay in the hidden state. Remount the container per data set.
+  const dataKey = posts.map((post) => post.url).join("|");
 
   if (!featured || !first) {
     return (
-      <Stagger className={className}>
+      <Stagger key={dataKey} className={className}>
         {posts.map((post) => (
           <StaggerItem key={`${post.source}-${post.url}-${post.publishedAt}`}>
             <FeedItem {...post} />
@@ -130,7 +134,7 @@ function FeedGrid({
   return (
     <div className="space-y-8">
       <FeedItem {...first} variant="featured" />
-      <Stagger className={className}>
+      <Stagger key={dataKey} className={className}>
         {rest.map((post) => (
           <StaggerItem key={`${post.source}-${post.url}-${post.publishedAt}`}>
             <FeedItem {...post} />
