@@ -7,6 +7,7 @@ import {
 } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
+import type { Id } from "../_generated/dataModel";
 import { fbCategory, fbPostType } from "../schema";
 
 type FacebookAttachment = {
@@ -214,8 +215,16 @@ export const syncFromFacebook = internalAction({
   },
 });
 
+type SyncRunResult = {
+  success: boolean;
+  error?: string;
+  created?: number;
+  updated?: number;
+  errors?: number;
+};
+
 export const triggerFacebookSync = action({
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<SyncRunResult> => {
     return await ctx.runAction(internal.facebook.sync.syncFromFacebook);
   },
 });
@@ -319,7 +328,7 @@ export const getSyncStatus = query({
 });
 
 async function storeRemoteImage(ctx: {
-  storage: { store: (blob: Blob) => Promise<string> };
+  storage: { store: (blob: Blob) => Promise<Id<"_storage">> };
 }, url: string) {
   try {
     const imgResponse = await fetch(url);

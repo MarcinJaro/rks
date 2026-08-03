@@ -117,8 +117,15 @@ export const syncFromLnp = internalAction({
   },
 });
 
+type SyncSourceResult = {
+  success: boolean;
+  upserted?: number;
+  skipped?: number;
+  error?: string;
+};
+
 export const triggerLnpSync = action({
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<SyncSourceResult> => {
     return await ctx.runAction(internal.matchesSync.syncFromLnp);
   },
 });
@@ -170,7 +177,7 @@ export const syncFromRegionalnyFutbol = internalAction({
 });
 
 export const triggerRegionalnyFutbolSync = action({
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<SyncSourceResult> => {
     return await ctx.runAction(internal.matchesSync.syncFromRegionalnyFutbol);
   },
 });
@@ -220,7 +227,7 @@ export const syncFromFutbolowo = internalAction({
 });
 
 export const triggerFutbolowoSync = action({
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<SyncSourceResult> => {
     return await ctx.runAction(internal.matchesSync.syncFromFutbolowo);
   },
 });
@@ -249,7 +256,7 @@ export const syncConfiguredSources = internalAction({
 });
 
 export const triggerConfiguredSync = action({
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<Record<string, unknown>> => {
     return await ctx.runAction(internal.matchesSync.syncConfiguredSources);
   },
 });
