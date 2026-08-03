@@ -109,6 +109,30 @@ function ResultsList({ matches }: { matches: MatchItem[] }) {
               {match.teamName}
             </p>
           ) : null}
+          {match.veoUrl || match.youtubeUrl ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {match.veoUrl ? (
+                <a
+                  href={match.veoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-md bg-white/15 px-3 py-1 text-xs font-black uppercase text-white transition hover:bg-primary hover:text-primary-foreground"
+                >
+                  ▶ Nagranie VEO
+                </a>
+              ) : null}
+              {match.youtubeUrl ? (
+                <a
+                  href={match.youtubeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-md bg-white/15 px-3 py-1 text-xs font-black uppercase text-white transition hover:bg-primary hover:text-primary-foreground"
+                >
+                  ▶ YouTube
+                </a>
+              ) : null}
+            </div>
+          ) : null}
         </article>
       ))}
       </div>

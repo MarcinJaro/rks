@@ -131,6 +131,8 @@ export type MatchItem = {
   date: number;
   venue?: string;
   result?: string;
+  veoUrl?: string;
+  youtubeUrl?: string;
   matchType: "liga" | "sparing" | "turniej" | "puchar";
   status: "upcoming" | "live" | "finished";
 };
