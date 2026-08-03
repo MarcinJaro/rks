@@ -149,8 +149,13 @@ export default function AdminMatchesPage() {
     if (!window.confirm("Usunąć ten mecz? Tej operacji nie można cofnąć.")) {
       return;
     }
-    await removeMatch({ id });
-    if (editingId === id) setEditingId(null);
+    setError(null);
+    try {
+      await removeMatch({ id });
+      if (editingId === id) setEditingId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Coś poszło nie tak");
+    }
   }
 
   const inputClass =
@@ -190,16 +195,17 @@ export default function AdminMatchesPage() {
         </select>
       </div>
 
+      {error ? (
+        <p className="mt-4 rounded-md bg-red-500/15 px-4 py-2 text-sm font-bold text-red-300">
+          {error}
+        </p>
+      ) : null}
+
       {editingId ? (
         <section className="mt-6 rounded-lg border border-border bg-card p-5">
           <h2 className="text-lg font-black text-navy">
             {editingId === "new" ? "Nowy mecz" : "Edycja meczu"}
           </h2>
-          {error ? (
-            <p className="mt-3 rounded-md bg-red-500/15 px-4 py-2 text-sm font-bold text-red-300">
-              {error}
-            </p>
-          ) : null}
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <label className="grid gap-1 text-sm font-bold">
               Gospodarz

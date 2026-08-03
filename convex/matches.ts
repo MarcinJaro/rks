@@ -255,12 +255,15 @@ export const adminList = query({
     await requireAdmin(ctx);
     let matches;
     if (teamId) {
-      matches = await ctx.db
+      let teamMatches = await ctx.db
         .query("matches")
         .withIndex("by_team", (q) => q.eq("teamId", teamId))
         .order("desc")
-        .take(200);
-      if (status) matches = matches.filter((m) => m.status === status);
+        .collect();
+      if (status) {
+        teamMatches = teamMatches.filter((m) => m.status === status);
+      }
+      matches = teamMatches.slice(0, 200);
     } else if (status) {
       matches = await ctx.db
         .query("matches")
