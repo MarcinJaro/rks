@@ -333,9 +333,12 @@ export const adminMatchOptions = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
+    // Okno „najbliższy tydzień + niedawne mecze" — bez tego dzisiejszy mecz
+    // wypada z top-30 przy pełnym terminarzu ligowym kilku drużyn.
+    const weekAhead = Date.now() + 7 * 24 * 60 * 60 * 1000;
     return await ctx.db
       .query("matches")
-      .withIndex("by_date")
+      .withIndex("by_date", (q) => q.lte("date", weekAhead))
       .order("desc")
       .take(30);
   },
