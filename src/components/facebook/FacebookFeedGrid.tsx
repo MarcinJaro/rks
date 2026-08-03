@@ -28,11 +28,13 @@ export function FacebookFeedGrid({
   source = "all",
   className = "grid gap-8 md:grid-cols-3",
   featured = false,
+  category,
 }: {
   limit?: number;
   source?: FeedSource;
   className?: string;
   featured?: boolean;
+  category?: string;
 }) {
   if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
     return (
@@ -46,6 +48,7 @@ export function FacebookFeedGrid({
       source={source}
       className={className}
       featured={featured}
+      category={category}
     />
   );
 }
@@ -55,13 +58,24 @@ function LiveFeedGrid({
   source,
   className,
   featured,
+  category,
 }: {
   limit: number;
   source: FeedSource;
   className: string;
   featured: boolean;
+  category?: string;
 }) {
-  const items = useQuery(api.feed.getUnifiedFeed, { limit, source });
+  const items = useQuery(api.feed.getUnifiedFeed, { limit, source, category });
+
+  if (items && items.length === 0 && category) {
+    return (
+      <div className="rounded-lg border border-border bg-card p-8 text-muted-foreground">
+        Brak wpisów w tej kategorii.
+      </div>
+    );
+  }
+
   const posts =
     items && items.length > 0
       ? items.map((item: ConvexFeedItem, index: number) =>
