@@ -96,6 +96,9 @@ export default function AdminDocumentsPage() {
                 setEditingId(null);
                 setTitle("");
                 setCategory("");
+                setFileStorageId("");
+                setError(null);
+                setMessage(null);
               }}
             >
               Anuluj
@@ -135,6 +138,7 @@ export default function AdminDocumentsPage() {
                   setEditingId(document._id);
                   setTitle(document.title);
                   setCategory(document.category);
+                  setFileStorageId("");
                   setError(null);
                   setMessage(null);
                 }}
@@ -144,9 +148,17 @@ export default function AdminDocumentsPage() {
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => {
+                onClick={async () => {
                   if (window.confirm("Usunąć dokument wraz z plikiem?")) {
-                    removeDocument({ id: document._id });
+                    setError(null);
+                    setMessage(null);
+                    try {
+                      await removeDocument({ id: document._id });
+                    } catch (err) {
+                      setError(
+                        err instanceof Error ? err.message : "Coś poszło nie tak",
+                      );
+                    }
                   }
                 }}
               >

@@ -27,6 +27,20 @@ export function FileUpload({
     const files = Array.from(event.target.files ?? []);
     if (!files.length) return;
     setError(null);
+    if (accept) {
+      const acceptedTypes = accept.split(",").map((entry) => entry.trim());
+      const invalid = files.find((file) => {
+        return !acceptedTypes.some((entry) =>
+          entry.endsWith("/*")
+            ? file.type.startsWith(entry.slice(0, -1))
+            : file.type === entry,
+        );
+      });
+      if (invalid) {
+        setError(`Plik ${invalid.name} ma niedozwolony format`);
+        return;
+      }
+    }
     const tooBig = files.find((file) => file.size > maxSizeMb * 1024 * 1024);
     if (tooBig) {
       setError(`Plik ${tooBig.name} przekracza ${maxSizeMb} MB`);
