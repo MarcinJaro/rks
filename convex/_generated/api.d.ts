@@ -16,6 +16,7 @@ import type * as facebook_queries from "../facebook/queries.js";
 import type * as facebook_sync from "../facebook/sync.js";
 import type * as feed from "../feed.js";
 import type * as galleries from "../galleries.js";
+import type * as liveStreams from "../liveStreams.js";
 import type * as matches from "../matches.js";
 import type * as matchesSync from "../matchesSync.js";
 import type * as pages from "../pages.js";
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   "facebook/sync": typeof facebook_sync;
   feed: typeof feed;
   galleries: typeof galleries;
+  liveStreams: typeof liveStreams;
   matches: typeof matches;
   matchesSync: typeof matchesSync;
   pages: typeof pages;
