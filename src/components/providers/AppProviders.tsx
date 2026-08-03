@@ -1,6 +1,9 @@
 "use client";
 
-import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { ClerkProvider, useAuth } from "@clerk/nextjs";
+import { plPL } from "@clerk/localizations";
+import { ConvexReactClient } from "convex/react";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { ReactNode, useMemo } from "react";
 
 export function AppProviders({ children }: { children: ReactNode }) {
@@ -12,5 +15,11 @@ export function AppProviders({ children }: { children: ReactNode }) {
 
   if (!convex) return <>{children}</>;
 
-  return <ConvexProvider client={convex}>{children}</ConvexProvider>;
+  return (
+    <ClerkProvider localization={plPL}>
+      <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+        {children}
+      </ConvexProviderWithClerk>
+    </ClerkProvider>
+  );
 }
