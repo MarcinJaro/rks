@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { requireAdmin } from "./adminAuth";
 
 export const list = query({
   args: { activeOnly: v.optional(v.boolean()) },
@@ -36,6 +37,7 @@ export const upsert = mutation({
     sortOrder: v.number(),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const existing = await ctx.db
       .query("teams")
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
