@@ -136,6 +136,8 @@ export default defineSchema({
       v.literal("finished"),
     ),
     articleId: v.optional(v.id("articles")),
+    veoUrl: v.optional(v.string()),
+    youtubeUrl: v.optional(v.string()),
   })
     .index("by_date", ["date"])
     .index("by_team", ["teamId", "date"])
@@ -160,6 +162,19 @@ export default defineSchema({
   })
     .index("by_match", ["matchId"])
     .index("by_sourceEventId", ["sourceEventId"]),
+
+  liveStreams: defineTable({
+    title: v.string(),
+    youtubeUrl: v.string(),
+    matchId: v.optional(v.id("matches")),
+    status: v.union(
+      v.literal("scheduled"),
+      v.literal("live"),
+      v.literal("ended"),
+    ),
+    startsAt: v.optional(v.number()),
+    endedAt: v.optional(v.number()),
+  }).index("by_status", ["status"]),
 
   sponsors: defineTable({
     name: v.string(),
