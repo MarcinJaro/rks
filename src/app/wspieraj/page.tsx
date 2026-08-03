@@ -31,10 +31,10 @@ export default function SupportPage() {
               <li>Strefa A: 18 modułów w centralnej strefie.</li>
               <li>Strefa B: 18 modułów po lewej i prawej stronie.</li>
               <li>Wymiary jednego modułu: 250 x 70 cm.</li>
-              <li>Kontakt w sprawie oferty: 509 929 800.</li>
+              <li>Kontakt w sprawie oferty: 604 071 000.</li>
             </ul>
             <Button asChild className="mt-6">
-              <a href="tel:509929800">Zapytaj o ofertę</a>
+              <a href="tel:604071000">Zapytaj o ofertę</a>
             </Button>
           </div>
         </article>
@@ -69,19 +69,13 @@ export default function SupportPage() {
             Pamiątki i odzież RKS Okęcie
           </h2>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground">
-            Klubowy sklep działa pod osobnym adresem. Po otrzymaniu finalnego
-            linku do fanshopu NO10 możemy dodać drugi przycisk bezpośrednio do
-            kolekcji klubowej.
+            Oficjalna kolekcja RKS Okęcie dostępna jest w fanshopie naszego
+            partnera technicznego NO10.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Button asChild>
               <a href={clubShop.href} target="_blank" rel="noopener noreferrer">
                 Przejdź do sklepu
-              </a>
-            </Button>
-            <Button asChild variant="outline">
-              <a href="https://www.no10.pl/" target="_blank" rel="noopener noreferrer">
-                NO10
               </a>
             </Button>
           </div>

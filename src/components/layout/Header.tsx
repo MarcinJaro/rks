@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Camera, MessageCircle, Menu, Search, X } from "lucide-react";
+import { Camera, CirclePlay, MessageCircle, Menu, Search, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { navItems, socialLinks } from "@/data/site";
 import { Button } from "@/components/ui/button";
@@ -76,6 +76,11 @@ export function Header() {
           <Button asChild size="icon" variant="ghost" className="hidden text-[#cbd5e1] lg:inline-flex" aria-label="Instagram">
             <Link href={socialLinks.instagram} target="_blank" rel="noopener noreferrer">
               <Camera size={20} />
+            </Link>
+          </Button>
+          <Button asChild size="icon" variant="ghost" className="hidden text-[#cbd5e1] lg:inline-flex" aria-label="YouTube">
+            <Link href={socialLinks.youtube} target="_blank" rel="noopener noreferrer">
+              <CirclePlay size={20} />
             </Link>
           </Button>
           <Button size="icon" variant="ghost" className="hidden text-[#cbd5e1] sm:inline-flex" aria-label="Szukaj">

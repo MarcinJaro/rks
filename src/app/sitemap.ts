@@ -14,6 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/klub/certyfikacja-pzpn",
     "/klub/stadion",
     "/klub/dokumenty",
+    "/klub/niw-crso",
     "/kibice/historia",
     "/kibice/galeria",
     "/kibice/spiewnik",

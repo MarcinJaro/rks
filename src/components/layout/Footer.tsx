@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Camera, MapPin, MessageCircle, Phone, ShoppingBag } from "lucide-react";
-import { clubInfo, clubShop, navItems, socialLinks } from "@/data/site";
+import { Camera, CirclePlay, History, MapPin, MessageCircle, Phone, ShoppingBag } from "lucide-react";
+import { clubInfo, clubShop, navItems, oldSiteLink, socialLinks } from "@/data/site";
 
 export function Footer() {
   return (
@@ -66,12 +66,28 @@ export function Footer() {
               <Camera className="shrink-0 text-primary" size={18} /> Instagram RKS Okęcie
             </Link>
             <Link
+              href={socialLinks.youtube}
+              className="flex gap-2 transition hover:text-primary hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <CirclePlay className="shrink-0 text-primary" size={18} /> YouTube RKS Okęcie
+            </Link>
+            <Link
               href={clubShop.href}
               className="flex gap-2 transition hover:text-primary hover:underline"
               target="_blank"
               rel="noopener noreferrer"
             >
               <ShoppingBag className="shrink-0 text-primary" size={18} /> {clubShop.label}
+            </Link>
+            <Link
+              href={oldSiteLink.href}
+              className="flex gap-2 transition hover:text-primary hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <History className="shrink-0 text-primary" size={18} /> {oldSiteLink.label}
             </Link>
           </div>
         </div>

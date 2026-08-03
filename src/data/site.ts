@@ -11,17 +11,23 @@ export const navItems = [
 export const socialLinks = {
   facebook: "https://www.facebook.com/rks.okeciewarszawa",
   instagram: "https://www.instagram.com/rksokecie/",
+  youtube: "https://www.youtube.com/channel/UCwKI3pGnU3bZ44yfvhc_D5Q",
+};
+
+export const oldSiteLink = {
+  label: "Link do starej strony",
+  href: "http://rksokecie.ayz.pl",
 };
 
 export const clubShop = {
   label: "Sklep klubowy",
-  href: "https://sklep.rksokecie.pl/",
+  href: "https://www.no10.pl/rks-okecie,271",
 };
 
 export const partnerLogos = [
   {
     name: "NIW",
-    href: "https://niw.gov.pl/",
+    href: "/klub/niw-crso",
     logo: "/images/partners/niw.png",
     kind: "Partner",
   },
@@ -52,6 +58,12 @@ export const partnerLogos = [
   {
     name: "First Floor",
     href: "",
+    logo: null,
+    kind: "Partner",
+  },
+  {
+    name: "Symbiosystem",
+    href: "https://symbiosystem.pl",
     logo: null,
     kind: "Partner",
   },
