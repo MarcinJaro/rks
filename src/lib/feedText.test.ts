@@ -12,6 +12,10 @@ test("removeEmoji strips emoji without touching HTML tags", () => {
   );
 });
 
+test("stripEmoji removes flag emoji (regional indicators)", () => {
+  expect(stripEmoji("🇵🇱 Pamiętamy!")).toBe("Pamiętamy!");
+});
+
 test("stripEmoji removes emoji and tidies whitespace", () => {
   expect(stripEmoji("🏕️💙 Obóz RKS Okęcie w Piszu dobiegł końca!")).toBe(
     "Obóz RKS Okęcie w Piszu dobiegł końca!",

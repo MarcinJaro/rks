@@ -1,5 +1,5 @@
 const EMOJI_PATTERN =
-  /[\p{Extended_Pictographic}\u{FE0F}\u{200D}\u{20E3}\u{1F3FB}-\u{1F3FF}]/gu;
+  /[\p{Extended_Pictographic}\u{FE0F}\u{200D}\u{20E3}\u{1F3FB}-\u{1F3FF}\u{1F1E6}-\u{1F1FF}]/gu;
 
 /** Removes emoji characters only — safe for HTML strings (never touches tags). */
 export function removeEmoji(text: string): string {
