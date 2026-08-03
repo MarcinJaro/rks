@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/shared/PageHeader";
+import { FbSyncStatus } from "@/components/admin/FbSyncStatus";
 
 export default function AdminFacebookPostsPage() {
   return (
@@ -7,7 +8,8 @@ export default function AdminFacebookPostsPage() {
         title="Moderacja postów FB"
         description="Zarządzanie widocznością, przypięciem i kategoriami postów wyświetlanych na stronie."
       />
-      <section className="container-page py-12">
+      <section className="container-page space-y-6 py-12">
+        <FbSyncStatus />
         <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
           Posty można oznaczać jako wyróżnione, ukrywać z widoku publicznego
           oraz przypisywać do drużyn i kategorii tematycznych.
