@@ -1,5 +1,6 @@
 import { query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
+import { fbCategory } from "./schema";
 
 export const getUnifiedFeed = query({
   args: {
@@ -16,11 +17,24 @@ export const getUnifiedFeed = query({
     const items = [];
 
     if (source !== "cms") {
-      const posts = await ctx.db
-        .query("fbPosts")
-        .withIndex("by_hidden", (q) => q.eq("isHidden", false))
-        .order("desc")
-        .take(limit);
+      const category = args.category;
+      const posts = category
+        ? (
+            await ctx.db
+              .query("fbPosts")
+              .withIndex("by_category", (q) =>
+                q.eq("category", category as Infer<typeof fbCategory>),
+              )
+              .order("desc")
+              .take(limit + 10)
+          )
+            .filter((post) => !post.isHidden)
+            .slice(0, limit)
+        : await ctx.db
+            .query("fbPosts")
+            .withIndex("by_hidden", (q) => q.eq("isHidden", false))
+            .order("desc")
+            .take(limit);
 
       for (const post of posts) {
         if (args.teamId && post.teamId !== args.teamId) continue;
