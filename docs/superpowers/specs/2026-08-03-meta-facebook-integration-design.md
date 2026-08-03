@@ -72,13 +72,13 @@ Rozwiązanie (minimalne, bez nowych tabel):
 
 ### 5. Produkcja (Vercel)
 
-1. Naprawa deployów: wg notatek deploye na koncie creativerebels są
-   zablokowane (prywatne repo + author check); fix = re-import projektu
-   na koncie gmail, potem usunięcie starego hooka (workflow już usunięty
-   w `813c5a2`).
+1. Deploye działają (repo jest publiczne, wcześniejsza blokada
+   author-check nie występuje).
 2. `NEXT_PUBLIC_CONVEX_URL` w env Vercela, redeploy.
 3. Weryfikacja produkcji: prawdziwe posty na stronie głównej
-   i w aktualnościach.
+   i w aktualnościach. Uwaga: `rksokecie.pl` wskazuje wciąż na stary
+   hosting — weryfikujemy na deploymencie `*.vercel.app` (za SSO
+   protection, więc w przeglądarce, nie przez curl).
 
 ## Obsługa błędów
 
