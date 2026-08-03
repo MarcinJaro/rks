@@ -23,6 +23,7 @@ import type * as matches from "../matches.js";
 import type * as matchesSync from "../matchesSync.js";
 import type * as pages from "../pages.js";
 import type * as people from "../people.js";
+import type * as settings from "../settings.js";
 import type * as slugify from "../slugify.js";
 import type * as sponsors from "../sponsors.js";
 import type * as teams from "../teams.js";
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   matchesSync: typeof matchesSync;
   pages: typeof pages;
   people: typeof people;
+  settings: typeof settings;
   slugify: typeof slugify;
   sponsors: typeof sponsors;
   teams: typeof teams;
