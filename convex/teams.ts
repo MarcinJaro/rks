@@ -117,26 +117,36 @@ export const update = mutation({
   args: {
     id: v.id("teams"),
     name: v.optional(v.string()),
-    yearGroup: v.optional(v.number()),
-    league: v.optional(v.string()),
-    schedule: v.optional(v.string()),
-    description: v.optional(v.string()),
+    yearGroup: v.optional(v.union(v.number(), v.null())),
+    league: v.optional(v.union(v.string(), v.null())),
+    schedule: v.optional(v.union(v.string(), v.null())),
+    description: v.optional(v.union(v.string(), v.null())),
     isActive: v.optional(v.boolean()),
-    groupPhotoId: v.optional(v.id("_storage")),
-    coachId: v.optional(v.id("people")),
+    groupPhotoId: v.optional(v.union(v.id("_storage"), v.null())),
+    coachId: v.optional(v.union(v.id("people"), v.null())),
   },
   handler: async (ctx, { id, ...fields }) => {
     await requireAdmin(ctx);
     const team = await ctx.db.get(id);
     if (!team) throw new Error("Nie znaleziono drużyny");
-    if (
+    if (fields.groupPhotoId === null && team.groupPhotoId) {
+      await ctx.storage.delete(team.groupPhotoId);
+    } else if (
       fields.groupPhotoId &&
       team.groupPhotoId &&
       fields.groupPhotoId !== team.groupPhotoId
     ) {
       await ctx.storage.delete(team.groupPhotoId);
     }
-    await ctx.db.patch(id, fields);
+
+    const patch = Object.fromEntries(
+      Object.entries(fields).map(([key, value]) => [
+        key,
+        value === null ? undefined : value,
+      ]),
+    );
+
+    await ctx.db.patch(id, patch);
   },
 });
 

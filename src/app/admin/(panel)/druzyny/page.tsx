@@ -49,21 +49,30 @@ export default function AdminTeamsPage() {
 
   async function handleSave() {
     setError(null);
-    const fields = {
-      name: form.name,
-      yearGroup: form.yearGroup ? Number(form.yearGroup) : undefined,
-      league: form.league || undefined,
-      schedule: form.schedule || undefined,
-      description: form.description || undefined,
-      isActive: form.isActive,
-      groupPhotoId: form.groupPhotoId || undefined,
-      coachId: form.coachId ? (form.coachId as Id<"people">) : undefined,
-    };
     try {
       if (editingId === "new") {
-        await createTeam(fields);
+        await createTeam({
+          name: form.name,
+          yearGroup: form.yearGroup ? Number(form.yearGroup) : undefined,
+          league: form.league || undefined,
+          schedule: form.schedule || undefined,
+          description: form.description || undefined,
+          isActive: form.isActive,
+          groupPhotoId: form.groupPhotoId || undefined,
+          coachId: form.coachId ? (form.coachId as Id<"people">) : undefined,
+        });
       } else if (editingId) {
-        await updateTeam({ id: editingId, ...fields });
+        await updateTeam({
+          id: editingId,
+          name: form.name,
+          yearGroup: form.yearGroup ? Number(form.yearGroup) : null,
+          league: form.league || null,
+          schedule: form.schedule || null,
+          description: form.description || null,
+          isActive: form.isActive,
+          coachId: form.coachId ? (form.coachId as Id<"people">) : null,
+          ...(form.groupPhotoId ? { groupPhotoId: form.groupPhotoId } : {}),
+        });
       }
       setEditingId(null);
     } catch (err) {

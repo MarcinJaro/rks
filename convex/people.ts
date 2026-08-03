@@ -74,24 +74,44 @@ export const update = mutation({
     id: v.id("people"),
     name: v.optional(v.string()),
     role: v.optional(personRole),
-    position: v.optional(v.string()),
-    teamId: v.optional(v.id("teams")),
-    qualifications: v.optional(v.string()),
-    bio: v.optional(v.string()),
-    photoStorageId: v.optional(v.id("_storage")),
+    position: v.optional(v.union(v.string(), v.null())),
+    teamId: v.optional(v.union(v.id("teams"), v.null())),
+    qualifications: v.optional(v.union(v.string(), v.null())),
+    bio: v.optional(v.union(v.string(), v.null())),
+    photoStorageId: v.optional(v.union(v.id("_storage"), v.null())),
   },
   handler: async (ctx, { id, ...fields }) => {
     await requireAdmin(ctx);
     const person = await ctx.db.get(id);
     if (!person) throw new Error("Nie znaleziono osoby");
-    if (
+    if (fields.photoStorageId === null && person.photoStorageId) {
+      await ctx.storage.delete(person.photoStorageId);
+    } else if (
       fields.photoStorageId &&
       person.photoStorageId &&
       fields.photoStorageId !== person.photoStorageId
     ) {
       await ctx.storage.delete(person.photoStorageId);
     }
-    await ctx.db.patch(id, fields);
+
+    const patch: Record<string, unknown> = Object.fromEntries(
+      Object.entries(fields).map(([key, value]) => [
+        key,
+        value === null ? undefined : value,
+      ]),
+    );
+
+    if (fields.role && fields.role !== person.role) {
+      const sameRole = await ctx.db
+        .query("people")
+        .withIndex("by_role", (q) => q.eq("role", fields.role!))
+        .collect();
+      const sortOrder =
+        sameRole.reduce((max, item) => Math.max(max, item.sortOrder), 0) + 1;
+      patch.sortOrder = sortOrder;
+    }
+
+    await ctx.db.patch(id, patch);
   },
 });
 

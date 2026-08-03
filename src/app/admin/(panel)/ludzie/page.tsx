@@ -58,20 +58,30 @@ export default function AdminPeoplePage() {
 
   async function handleSave() {
     setError(null);
-    const fields = {
-      name: form.name,
-      role: form.role,
-      position: form.position || undefined,
-      teamId: form.teamId ? (form.teamId as Id<"teams">) : undefined,
-      qualifications: form.qualifications || undefined,
-      bio: form.bio || undefined,
-      photoStorageId: form.photoStorageId || undefined,
-    };
     try {
       if (editingId === "new") {
-        await createPerson(fields);
+        await createPerson({
+          name: form.name,
+          role: form.role,
+          position: form.position || undefined,
+          teamId: form.teamId ? (form.teamId as Id<"teams">) : undefined,
+          qualifications: form.qualifications || undefined,
+          bio: form.bio || undefined,
+          photoStorageId: form.photoStorageId || undefined,
+        });
       } else if (editingId) {
-        await updatePerson({ id: editingId, ...fields });
+        await updatePerson({
+          id: editingId,
+          name: form.name,
+          role: form.role,
+          position: form.position || null,
+          teamId: form.teamId ? (form.teamId as Id<"teams">) : null,
+          qualifications: form.qualifications || null,
+          bio: form.bio || null,
+          ...(form.photoStorageId
+            ? { photoStorageId: form.photoStorageId }
+            : {}),
+        });
       }
       setEditingId(null);
     } catch (err) {
