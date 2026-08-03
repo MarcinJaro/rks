@@ -3,6 +3,7 @@ import {
   internalAction,
   internalMutation,
   internalQuery,
+  query,
 } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
@@ -35,17 +36,41 @@ type FacebookPost = {
 type PostType = "text" | "photo" | "album" | "video" | "link" | "event";
 type Category = "mecz" | "trening" | "turniej" | "ogłoszenie" | "wydarzenie";
 
+const SYNC_STATUS_KEY = "fbSyncStatus";
+
+type SyncStatus = {
+  ok: boolean;
+  error?: string;
+  created: number;
+  updated: number;
+  errors: number;
+  at: number;
+};
+
 export const syncFromFacebook = internalAction({
   handler: async (ctx) => {
+    const recordStatus = async (status: SyncStatus) => {
+      await ctx.runMutation(internal.facebook.sync.setSyncStatus, {
+        value: JSON.stringify(status),
+      });
+    };
+
     const pageId = process.env.FB_PAGE_ID;
     const accessToken = process.env.FB_PAGE_ACCESS_TOKEN;
     const apiVersion = process.env.FB_GRAPH_API_VERSION || "v22.0";
 
     if (!pageId || !accessToken) {
-      return {
-        success: false,
-        error: "Missing FB_PAGE_ID or FB_PAGE_ACCESS_TOKEN in Convex env vars.",
-      };
+      const error =
+        "Missing FB_PAGE_ID or FB_PAGE_ACCESS_TOKEN in Convex env vars.";
+      await recordStatus({
+        ok: false,
+        error,
+        created: 0,
+        updated: 0,
+        errors: 0,
+        at: Date.now(),
+      });
+      return { success: false, error };
     }
 
     const fields = [
@@ -66,11 +91,33 @@ export const syncFromFacebook = internalAction({
       `https://graph.facebook.com/${apiVersion}/${pageId}/feed` +
       `?fields=${encodeURIComponent(fields)}&limit=25&access_token=${accessToken}`;
 
-    const response = await fetch(url);
-    const data = await response.json();
+    let data;
+    try {
+      const response = await fetch(url);
+      data = await response.json();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await recordStatus({
+        ok: false,
+        error: message,
+        created: 0,
+        updated: 0,
+        errors: 0,
+        at: Date.now(),
+      });
+      return { success: false, error: message };
+    }
 
     if (data.error) {
       console.error("FB API Error:", data.error);
+      await recordStatus({
+        ok: false,
+        error: data.error.message,
+        created: 0,
+        updated: 0,
+        errors: 0,
+        at: Date.now(),
+      });
       return { success: false, error: data.error.message };
     }
 
@@ -162,6 +209,7 @@ export const syncFromFacebook = internalAction({
       }
     }
 
+    await recordStatus({ ok: true, created, updated, errors, at: Date.now() });
     return { success: true, created, updated, errors };
   },
 });
@@ -236,6 +284,37 @@ export const updatePost = internalMutation({
   },
   handler: async (ctx, { id, ...fields }) => {
     await ctx.db.patch(id, fields);
+  },
+});
+
+export const setSyncStatus = internalMutation({
+  args: { value: v.string() },
+  handler: async (ctx, { value }) => {
+    const existing = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", SYNC_STATUS_KEY))
+      .first();
+    if (existing) {
+      await ctx.db.patch(existing._id, { value });
+    } else {
+      await ctx.db.insert("settings", { key: SYNC_STATUS_KEY, value });
+    }
+  },
+});
+
+export const getSyncStatus = query({
+  args: {},
+  handler: async (ctx) => {
+    const row = await ctx.db
+      .query("settings")
+      .withIndex("by_key", (q) => q.eq("key", SYNC_STATUS_KEY))
+      .first();
+    if (!row) return null;
+    try {
+      return JSON.parse(row.value) as SyncStatus;
+    } catch {
+      return null;
+    }
   },
 });
 
