@@ -30,7 +30,7 @@ export default function AdminSettingsPage() {
         loaded[setting.key] = setting.value;
       }
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setValues(loaded);
+      setValues((prev) => ({ ...loaded, ...prev }));
     }
   }, [settings]);
 
