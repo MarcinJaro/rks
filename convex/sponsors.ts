@@ -82,6 +82,16 @@ export const update = mutation({
       ]),
     );
 
+    if (fields.type && fields.type !== sponsor.type) {
+      const sameType = await ctx.db
+        .query("sponsors")
+        .withIndex("by_type", (q) => q.eq("type", fields.type!))
+        .collect();
+      const sortOrder =
+        sameType.reduce((max, item) => Math.max(max, item.sortOrder), 0) + 1;
+      patch.sortOrder = sortOrder;
+    }
+
     await ctx.db.patch(id, patch);
   },
 });
