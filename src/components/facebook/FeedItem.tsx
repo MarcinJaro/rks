@@ -31,6 +31,9 @@ export function FeedItem({
 }: FeedItemProps) {
   const imageSrc = imageUrl || "/images/rks-logo.png";
   const isExternal = url.startsWith("http");
+  // Next's image optimizer rejects IP-literal hosts, which the local Convex
+  // backend uses for storage URLs in dev.
+  const isLocalStorage = imageSrc.startsWith("http://127.0.0.1");
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-lg border border-white/8 bg-[var(--feed-card)] shadow-sm shadow-black/20">
@@ -43,6 +46,7 @@ export function FeedItem({
           src={imageSrc}
           alt={title}
           fill
+          unoptimized={isLocalStorage}
           sizes="(min-width: 1024px) 33vw, 100vw"
           className={
             imageUrl && imageFit === "cover"
@@ -75,19 +79,17 @@ export function FeedItem({
         <p className="mt-4 line-clamp-5 text-sm leading-6 text-muted-foreground">
           {content}
         </p>
-        <Link
-          href={url}
-          target={isExternal ? "_blank" : undefined}
-          rel={isExternal ? "noopener noreferrer" : undefined}
-          className="mt-6 inline-flex w-fit items-center gap-1.5 text-sm font-black text-accent hover:underline"
-        >
-          {mediaType === "video"
-            ? "Otwórz video"
-            : source === "facebook"
-              ? "Zobacz źródło"
-              : "Czytaj aktualność"}
-          <ArrowUpRight size={15} />
-        </Link>
+        {source === "facebook" && mediaType !== "video" ? null : (
+          <Link
+            href={url}
+            target={isExternal ? "_blank" : undefined}
+            rel={isExternal ? "noopener noreferrer" : undefined}
+            className="mt-6 inline-flex w-fit items-center gap-1.5 text-sm font-black text-accent hover:underline"
+          >
+            {mediaType === "video" ? "Otwórz video" : "Czytaj aktualność"}
+            <ArrowUpRight size={15} />
+          </Link>
+        )}
       </div>
     </article>
   );
