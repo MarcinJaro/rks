@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { fbCategory } from "../schema";
+import { requireAdmin } from "../adminAuth";
 
 export const setHidden = mutation({
   args: {
@@ -8,6 +9,7 @@ export const setHidden = mutation({
     isHidden: v.boolean(),
   },
   handler: async (ctx, { id, isHidden }) => {
+    await requireAdmin(ctx);
     await ctx.db.patch(id, { isHidden });
   },
 });
@@ -18,6 +20,7 @@ export const setPinned = mutation({
     isPinned: v.boolean(),
   },
   handler: async (ctx, { id, isPinned }) => {
+    await requireAdmin(ctx);
     await ctx.db.patch(id, { isPinned });
   },
 });
@@ -29,6 +32,7 @@ export const categorize = mutation({
     teamId: v.optional(v.id("teams")),
   },
   handler: async (ctx, { id, category, teamId }) => {
+    await requireAdmin(ctx);
     await ctx.db.patch(id, { category, teamId });
   },
 });

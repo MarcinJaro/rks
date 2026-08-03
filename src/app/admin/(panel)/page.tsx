@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const modules = [
-  ["Transmisja live", "/admin/live", 'Włącz i wyłącz sekcję „Mecz live" na stronie głównej'],
+  ["Transmisja live", "/admin/live", "Włącz i wyłącz sekcję „Mecz live” na stronie głównej"],
   ["Mecze", "/admin/mecze", "Terminarz, wyniki i linki do nagrań VEO/YouTube"],
   ["Drużyny", "/admin/druzyny", "Zespoły, trenerzy, zdjęcia grupowe"],
   ["Ludzie", "/admin/ludzie", "Trenerzy, zarząd, legendy klubu"],

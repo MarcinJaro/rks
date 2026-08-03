@@ -118,25 +118,31 @@ export default function AdminMatchesPage() {
       setError("Podaj poprawną datę meczu");
       return;
     }
-    const fields = {
-      homeTeam: form.homeTeam,
-      awayTeam: form.awayTeam,
-      date: timestamp,
-      venue: form.venue || undefined,
-      matchType: form.matchType,
-      status: form.status,
-      teamId: form.teamId ? (form.teamId as Id<"teams">) : undefined,
-      result: form.result || undefined,
-    };
     try {
       if (editingId === "new") {
-        await createManual(fields);
+        await createManual({
+          homeTeam: form.homeTeam,
+          awayTeam: form.awayTeam,
+          date: timestamp,
+          venue: form.venue || undefined,
+          matchType: form.matchType,
+          status: form.status,
+          teamId: form.teamId ? (form.teamId as Id<"teams">) : undefined,
+          result: form.result || undefined,
+        });
       } else if (editingId) {
         await updateMatch({
           id: editingId,
-          ...fields,
-          veoUrl: form.veoUrl || undefined,
-          youtubeUrl: form.youtubeUrl || undefined,
+          homeTeam: form.homeTeam,
+          awayTeam: form.awayTeam,
+          date: timestamp,
+          venue: form.venue || null,
+          matchType: form.matchType,
+          status: form.status,
+          teamId: form.teamId ? (form.teamId as Id<"teams">) : null,
+          result: form.result || null,
+          veoUrl: form.veoUrl || null,
+          youtubeUrl: form.youtubeUrl || null,
         });
       }
       setEditingId(null);

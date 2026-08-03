@@ -1,6 +1,8 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+import { requireAdmin } from "./adminAuth";
+
 export const listPublished = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, { limit }) => {
@@ -35,6 +37,7 @@ export const saveDraft = mutation({
     status: v.union(v.literal("draft"), v.literal("published")),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const existing = await ctx.db
       .query("articles")
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))

@@ -25,8 +25,7 @@ function formatDate(timestamp?: number) {
 
 export default function AdminLivePage() {
   const streams = useQuery(api.liveStreams.list);
-  const upcoming = useQuery(api.matches.upcoming, { limit: 20 });
-  const recent = useQuery(api.matches.latestResults, { limit: 10 });
+  const matchOptions = useQuery(api.matches.adminMatchOptions) ?? [];
   const createStream = useMutation(api.liveStreams.create);
   const startStream = useMutation(api.liveStreams.start);
   const endStream = useMutation(api.liveStreams.end);
@@ -40,7 +39,6 @@ export default function AdminLivePage() {
   const [error, setError] = useState<string | null>(null);
 
   const previewUrl = youtubeEmbedUrl(youtubeUrl);
-  const matchOptions = [...(upcoming ?? []), ...(recent ?? [])];
 
   async function handleCreate() {
     setError(null);
@@ -219,12 +217,19 @@ export default function AdminLivePage() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() =>
+                    onClick={() => {
+                      if (
+                        !window.confirm(
+                          "Usunąć tę transmisję? Tej operacji nie można cofnąć.",
+                        )
+                      ) {
+                        return;
+                      }
                       run(
                         () => removeStream({ id: stream._id }),
                         "Transmisja usunięta",
-                      )
-                    }
+                      );
+                    }}
                   >
                     Usuń
                   </Button>

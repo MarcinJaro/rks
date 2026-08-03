@@ -9,6 +9,7 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { fbCategory, fbPostType } from "../schema";
+import { requireAdmin } from "../adminAuth";
 
 type FacebookAttachment = {
   media?: { image?: { src?: string } };
@@ -225,6 +226,7 @@ type SyncRunResult = {
 
 export const triggerFacebookSync = action({
   handler: async (ctx): Promise<SyncRunResult> => {
+    await requireAdmin(ctx);
     return await ctx.runAction(internal.facebook.sync.syncFromFacebook);
   },
 });

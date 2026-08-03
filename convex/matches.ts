@@ -307,19 +307,37 @@ export const update = mutation({
     homeTeam: v.optional(v.string()),
     awayTeam: v.optional(v.string()),
     date: v.optional(v.number()),
-    venue: v.optional(v.string()),
+    venue: v.optional(v.union(v.string(), v.null())),
     matchType: v.optional(matchType),
     status: v.optional(matchStatus),
-    teamId: v.optional(v.id("teams")),
-    result: v.optional(v.string()),
-    veoUrl: v.optional(v.string()),
-    youtubeUrl: v.optional(v.string()),
+    teamId: v.optional(v.union(v.id("teams"), v.null())),
+    result: v.optional(v.union(v.string(), v.null())),
+    veoUrl: v.optional(v.union(v.string(), v.null())),
+    youtubeUrl: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, { id, ...fields }) => {
     await requireAdmin(ctx);
     const match = await ctx.db.get(id);
     if (!match) throw new Error("Nie znaleziono meczu");
-    await ctx.db.patch(id, fields);
+    const patch = Object.fromEntries(
+      Object.entries(fields).map(([key, value]) => [
+        key,
+        value === null ? undefined : value,
+      ]),
+    );
+    await ctx.db.patch(id, patch);
+  },
+});
+
+export const adminMatchOptions = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    return await ctx.db
+      .query("matches")
+      .withIndex("by_date")
+      .order("desc")
+      .take(30);
   },
 });
 
