@@ -61,7 +61,7 @@ export const create = mutation({
     while (
       await ctx.db
         .query("galleries")
-        .filter((q) => q.eq(q.field("slug"), slug))
+        .withIndex("by_slug", (q) => q.eq("slug", slug))
         .first()
     ) {
       slug = `${base}-${counter}`;
