@@ -1,5 +1,6 @@
 import { action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { requireAdmin } from "./adminAuth";
 
 type LnpMatch = Record<string, unknown>;
 
@@ -126,6 +127,7 @@ type SyncSourceResult = {
 
 export const triggerLnpSync = action({
   handler: async (ctx): Promise<SyncSourceResult> => {
+    await requireAdmin(ctx);
     return await ctx.runAction(internal.matchesSync.syncFromLnp);
   },
 });
@@ -178,6 +180,7 @@ export const syncFromRegionalnyFutbol = internalAction({
 
 export const triggerRegionalnyFutbolSync = action({
   handler: async (ctx): Promise<SyncSourceResult> => {
+    await requireAdmin(ctx);
     return await ctx.runAction(internal.matchesSync.syncFromRegionalnyFutbol);
   },
 });
@@ -228,6 +231,7 @@ export const syncFromFutbolowo = internalAction({
 
 export const triggerFutbolowoSync = action({
   handler: async (ctx): Promise<SyncSourceResult> => {
+    await requireAdmin(ctx);
     return await ctx.runAction(internal.matchesSync.syncFromFutbolowo);
   },
 });
@@ -257,6 +261,7 @@ export const syncConfiguredSources = internalAction({
 
 export const triggerConfiguredSync = action({
   handler: async (ctx): Promise<Record<string, unknown>> => {
+    await requireAdmin(ctx);
     return await ctx.runAction(internal.matchesSync.syncConfiguredSources);
   },
 });

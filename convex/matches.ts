@@ -1,5 +1,12 @@
-import { internalMutation, internalQuery, query } from "./_generated/server";
+import {
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "./_generated/server";
 import { v } from "convex/values";
+
+import { requireAdmin } from "./adminAuth";
 
 const matchType = v.union(
   v.literal("liga"),
@@ -236,5 +243,111 @@ export const upsertFromSource = internalMutation({
     }
 
     return await ctx.db.insert("matches", fields);
+  },
+});
+
+export const adminList = query({
+  args: {
+    teamId: v.optional(v.id("teams")),
+    status: v.optional(matchStatus),
+  },
+  handler: async (ctx, { teamId, status }) => {
+    await requireAdmin(ctx);
+    let matches;
+    if (teamId) {
+      let teamMatches = await ctx.db
+        .query("matches")
+        .withIndex("by_team", (q) => q.eq("teamId", teamId))
+        .order("desc")
+        .collect();
+      if (status) {
+        teamMatches = teamMatches.filter((m) => m.status === status);
+      }
+      matches = teamMatches.slice(0, 200);
+    } else if (status) {
+      matches = await ctx.db
+        .query("matches")
+        .withIndex("by_status", (q) => q.eq("status", status))
+        .order("desc")
+        .take(200);
+    } else {
+      matches = await ctx.db
+        .query("matches")
+        .withIndex("by_date")
+        .order("desc")
+        .take(200);
+    }
+    return matches;
+  },
+});
+
+export const createManual = mutation({
+  args: {
+    homeTeam: v.string(),
+    awayTeam: v.string(),
+    date: v.number(),
+    venue: v.optional(v.string()),
+    matchType,
+    status: matchStatus,
+    teamId: v.optional(v.id("teams")),
+    result: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    if (!args.homeTeam.trim() || !args.awayTeam.trim()) {
+      throw new Error("Podaj nazwy obu drużyn");
+    }
+    return await ctx.db.insert("matches", { ...args, source: "manual" });
+  },
+});
+
+export const update = mutation({
+  args: {
+    id: v.id("matches"),
+    homeTeam: v.optional(v.string()),
+    awayTeam: v.optional(v.string()),
+    date: v.optional(v.number()),
+    venue: v.optional(v.union(v.string(), v.null())),
+    matchType: v.optional(matchType),
+    status: v.optional(matchStatus),
+    teamId: v.optional(v.union(v.id("teams"), v.null())),
+    result: v.optional(v.union(v.string(), v.null())),
+    veoUrl: v.optional(v.union(v.string(), v.null())),
+    youtubeUrl: v.optional(v.union(v.string(), v.null())),
+  },
+  handler: async (ctx, { id, ...fields }) => {
+    await requireAdmin(ctx);
+    const match = await ctx.db.get(id);
+    if (!match) throw new Error("Nie znaleziono meczu");
+    const patch = Object.fromEntries(
+      Object.entries(fields).map(([key, value]) => [
+        key,
+        value === null ? undefined : value,
+      ]),
+    );
+    await ctx.db.patch(id, patch);
+  },
+});
+
+export const adminMatchOptions = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    // Okno „najbliższy tydzień + niedawne mecze" — bez tego dzisiejszy mecz
+    // wypada z top-30 przy pełnym terminarzu ligowym kilku drużyn.
+    const weekAhead = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    return await ctx.db
+      .query("matches")
+      .withIndex("by_date", (q) => q.lte("date", weekAhead))
+      .order("desc")
+      .take(30);
+  },
+});
+
+export const removeMatch = mutation({
+  args: { id: v.id("matches") },
+  handler: async (ctx, { id }) => {
+    await requireAdmin(ctx);
+    await ctx.db.delete(id);
   },
 });

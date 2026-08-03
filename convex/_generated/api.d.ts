@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as adminAuth from "../adminAuth.js";
 import type * as articles from "../articles.js";
 import type * as crons from "../crons.js";
 import type * as documents from "../documents.js";
@@ -15,11 +16,14 @@ import type * as facebook_mutations from "../facebook/mutations.js";
 import type * as facebook_queries from "../facebook/queries.js";
 import type * as facebook_sync from "../facebook/sync.js";
 import type * as feed from "../feed.js";
+import type * as files from "../files.js";
 import type * as galleries from "../galleries.js";
+import type * as liveStreams from "../liveStreams.js";
 import type * as matches from "../matches.js";
 import type * as matchesSync from "../matchesSync.js";
 import type * as pages from "../pages.js";
 import type * as people from "../people.js";
+import type * as slugify from "../slugify.js";
 import type * as sponsors from "../sponsors.js";
 import type * as teams from "../teams.js";
 
@@ -30,6 +34,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  adminAuth: typeof adminAuth;
   articles: typeof articles;
   crons: typeof crons;
   documents: typeof documents;
@@ -37,11 +42,14 @@ declare const fullApi: ApiFromModules<{
   "facebook/queries": typeof facebook_queries;
   "facebook/sync": typeof facebook_sync;
   feed: typeof feed;
+  files: typeof files;
   galleries: typeof galleries;
+  liveStreams: typeof liveStreams;
   matches: typeof matches;
   matchesSync: typeof matchesSync;
   pages: typeof pages;
   people: typeof people;
+  slugify: typeof slugify;
   sponsors: typeof sponsors;
   teams: typeof teams;
 }>;

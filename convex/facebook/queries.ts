@@ -1,5 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { requireAdmin } from "../adminAuth";
 
 export const listForAdmin = query({
   args: {
@@ -7,6 +8,7 @@ export const listForAdmin = query({
     includeHidden: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const posts = await ctx.db
       .query("fbPosts")
       .withIndex("by_publishedAt")
