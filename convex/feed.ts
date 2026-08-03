@@ -124,7 +124,7 @@ export const getPostBySlug = query({
 
     const article = await ctx.db
       .query("articles")
-      .filter((q) => q.eq(q.field("slug"), slug))
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
       .first();
 
     if (article && article.status === "published") {

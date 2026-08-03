@@ -204,7 +204,8 @@ export default defineSchema({
     description: v.optional(v.string()),
   })
     .index("by_date", ["date"])
-    .index("by_team", ["teamId"]),
+    .index("by_team", ["teamId"])
+    .index("by_slug", ["slug"]),
 
   documents: defineTable({
     title: v.string(),
