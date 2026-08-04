@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
+import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
 import { ReactNode } from "react";
 
 const navItems = [
@@ -55,7 +56,26 @@ export default function AdminPanelLayout({
           })}
         </nav>
       </aside>
-      <div className="min-w-0">{children}</div>
+      <div className="min-w-0">
+        {/* Zapytania stron panelu mogą ruszyć dopiero, gdy socket Convex ma
+            token Clerk — wcześniejsza subskrypcja leci bez tożsamości i
+            requireAdmin ją odrzuca. */}
+        <AuthLoading>
+          <p className="py-10 text-sm text-muted-foreground">
+            Ładowanie panelu…
+          </p>
+        </AuthLoading>
+        <Unauthenticated>
+          <p className="py-10 text-sm text-muted-foreground">
+            Sesja wygasła —{" "}
+            <Link href="/admin/sign-in" className="font-bold text-primary">
+              zaloguj się ponownie
+            </Link>
+            .
+          </p>
+        </Unauthenticated>
+        <Authenticated>{children}</Authenticated>
+      </div>
     </div>
   );
 }
