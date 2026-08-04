@@ -129,6 +129,8 @@ export type MatchItem = {
   homeTeam: string;
   awayTeam: string;
   date: number;
+  dateConfirmed?: boolean;
+  roundLabel?: string;
   venue?: string;
   result?: string;
   veoUrl?: string;

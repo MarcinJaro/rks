@@ -12,7 +12,8 @@ crons.interval(
 crons.interval(
   "sync match results",
   { hours: 6 },
-  internal.matchesSync.syncConfiguredSources,
+  internal.matchesSync.syncAll,
+  {},
 );
 
 export default crons;

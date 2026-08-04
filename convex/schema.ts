@@ -109,10 +109,16 @@ export default defineSchema({
     homeTeam: v.string(),
     awayTeam: v.string(),
     date: v.number(),
+    // Brak pola znaczy tyle co true — mecze sprzed wprowadzenia terminów
+    // orientacyjnych zawsze miały własną datę.
+    dateConfirmed: v.optional(v.boolean()),
+    // Gotowy opis terminu z terminarza, np. „5. kolejka, 6-7 września".
+    roundLabel: v.optional(v.string()),
     venue: v.optional(v.string()),
     result: v.optional(v.string()),
     source: v.optional(
       v.union(
+        v.literal("ninetyminut"),
         v.literal("manual"),
         v.literal("lnp"),
         v.literal("futbolowo"),
@@ -164,6 +170,58 @@ export default defineSchema({
   })
     .index("by_match", ["matchId"])
     .index("by_sourceEventId", ["sourceEventId"]),
+
+  syncSources: defineTable({
+    teamId: v.id("teams"),
+    kind: v.union(v.literal("ninetyminut"), v.literal("virium")),
+    url: v.string(),
+    externalId: v.string(),
+    teamNameOnSource: v.string(),
+    matchType: v.union(
+      v.literal("liga"),
+      v.literal("sparing"),
+      v.literal("turniej"),
+      v.literal("puchar"),
+    ),
+    enabled: v.boolean(),
+    lastSyncedAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+  }).index("by_team", ["teamId"]),
+
+  standings: defineTable({
+    teamId: v.id("teams"),
+    // Drużyna bywa zgłoszona w kilku rozgrywkach naraz (liga + puchar),
+    // a każde źródło ma własną tabelę — bez tego pola ostatni sync
+    // nadpisywałby tabelę poprzedniego.
+    sourceId: v.id("syncSources"),
+    competitionName: v.string(),
+    season: v.string(),
+    rows: v.array(
+      v.object({
+        position: v.number(),
+        name: v.string(),
+        played: v.number(),
+        points: v.number(),
+        wins: v.number(),
+        draws: v.number(),
+        losses: v.number(),
+        goalsFor: v.number(),
+        goalsAgainst: v.number(),
+        isRks: v.boolean(),
+      }),
+    ),
+    syncedAt: v.number(),
+    sourceUrl: v.optional(v.string()),
+  })
+    .index("by_team", ["teamId"])
+    .index("by_source", ["sourceId"]),
+
+  appSettings: defineTable({
+    key: v.string(),
+    boolValue: v.optional(v.boolean()),
+    stringValue: v.optional(v.string()),
+    numberValue: v.optional(v.number()),
+  }).index("by_key", ["key"]),
 
   liveStreams: defineTable({
     title: v.string(),

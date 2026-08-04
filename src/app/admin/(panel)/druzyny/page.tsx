@@ -8,6 +8,7 @@ import type { Id } from "../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Field, Feedback, inputClass } from "@/components/admin/fields";
 import { FileUpload } from "@/components/admin/FileUpload";
+import { TeamSources } from "./TeamSources";
 
 type FormState = {
   name: string;
@@ -194,6 +195,10 @@ export default function AdminTeamsPage() {
             </Button>
           </div>
         </section>
+      ) : null}
+
+      {editingId && editingId !== "new" ? (
+        <TeamSources teamId={editingId} />
       ) : null}
 
       <div className="mt-6 grid gap-3">
