@@ -1,4 +1,5 @@
 import { internalMutation } from "./_generated/server";
+import { v } from "convex/values";
 
 // Jednorazowy seed danych z dotychczasowych plików statycznych
 // (src/data/site.ts, src/data/legacy.ts). Idempotentny: istniejące
@@ -154,5 +155,76 @@ export const seedFromLegacy = internalMutation({
     }
 
     return result;
+  },
+});
+
+// Używane przez scripts/seed-files.mjs do wgrania logotypów i PDF-ów.
+export const uploadUrl = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const seedSponsors = internalMutation({
+  args: {
+    items: v.array(
+      v.object({
+        name: v.string(),
+        url: v.optional(v.string()),
+        type: v.union(v.literal("sponsor"), v.literal("partner")),
+        logoStorageId: v.id("_storage"),
+      }),
+    ),
+  },
+  handler: async (ctx, { items }) => {
+    const existing = await ctx.db.query("sponsors").collect();
+    const existingNames = new Set(existing.map((sponsor) => sponsor.name));
+    let inserted = 0;
+    for (const item of items) {
+      if (existingNames.has(item.name)) {
+        await ctx.storage.delete(item.logoStorageId);
+        continue;
+      }
+      const sameType = existing.filter((sponsor) => sponsor.type === item.type);
+      const sortOrder =
+        sameType.reduce((max, sponsor) => Math.max(max, sponsor.sortOrder), 0) +
+        inserted +
+        1;
+      await ctx.db.insert("sponsors", { ...item, sortOrder });
+      inserted += 1;
+    }
+    return { inserted, skipped: items.length - inserted };
+  },
+});
+
+export const seedDocuments = internalMutation({
+  args: {
+    items: v.array(
+      v.object({
+        title: v.string(),
+        category: v.string(),
+        fileStorageId: v.id("_storage"),
+      }),
+    ),
+  },
+  handler: async (ctx, { items }) => {
+    const existing = await ctx.db.query("documents").collect();
+    const existingTitles = new Set(existing.map((doc) => doc.title));
+    let sortOrder = existing.reduce(
+      (max, doc) => Math.max(max, doc.sortOrder),
+      0,
+    );
+    let inserted = 0;
+    for (const item of items) {
+      if (existingTitles.has(item.title)) {
+        await ctx.storage.delete(item.fileStorageId);
+        continue;
+      }
+      sortOrder += 1;
+      await ctx.db.insert("documents", { ...item, sortOrder });
+      inserted += 1;
+    }
+    return { inserted, skipped: items.length - inserted };
   },
 });
