@@ -1,10 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
+
+type SyncResults = FunctionReturnType<
+  typeof api.matchesSync.triggerSync
+>["results"];
 
 const typeLabels = {
   liga: "Liga",
@@ -74,15 +79,21 @@ export default function AdminMatchesPage() {
   );
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResults, setSyncResults] = useState<SyncResults | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const teams = useQuery(api.teams.list, {});
   const matches = useQuery(api.matches.adminList, {
     teamId: filterTeam ? (filterTeam as Id<"teams">) : undefined,
     status: filterStatus ? (filterStatus as MatchStatus) : undefined,
   });
+  const autoSync = useQuery(api.appSettings.getAutoSync, {});
   const createManual = useMutation(api.matches.createManual);
   const updateMatch = useMutation(api.matches.update);
   const removeMatch = useMutation(api.matches.removeMatch);
+  const setAutoSync = useMutation(api.appSettings.setAutoSync);
+  const triggerSync = useAction(api.matchesSync.triggerSync);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -161,6 +172,35 @@ export default function AdminMatchesPage() {
       if (editingId === id) setEditingId(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Coś poszło nie tak");
+    }
+  }
+
+  async function handleAutoSyncChange(enabled: boolean) {
+    setSyncError(null);
+    try {
+      await setAutoSync({ enabled });
+    } catch (err) {
+      setSyncError(
+        err instanceof Error
+          ? err.message
+          : "Nie udało się zapisać ustawienia synchronizacji",
+      );
+    }
+  }
+
+  async function handleSyncNow() {
+    setIsSyncing(true);
+    setSyncError(null);
+    setSyncResults(null);
+    try {
+      const outcome = await triggerSync({});
+      setSyncResults(outcome.results);
+    } catch (err) {
+      setSyncError(
+        err instanceof Error ? err.message : "Synchronizacja się nie powiodła",
+      );
+    } finally {
+      setIsSyncing(false);
     }
   }
 
@@ -335,6 +375,70 @@ export default function AdminMatchesPage() {
           </div>
         </section>
       ) : null}
+
+      <section className="mt-6 rounded-lg border border-border bg-card p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-black text-navy">Synchronizacja</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Mecze i tabele pobierane ze źródeł skonfigurowanych w module
+              Drużyny.
+            </p>
+          </div>
+          <Button onClick={handleSyncNow} disabled={isSyncing}>
+            {isSyncing ? "Synchronizuję…" : "Synchronizuj teraz"}
+          </Button>
+        </div>
+
+        <label className="mt-4 flex items-center gap-2 text-sm font-bold">
+          <input
+            type="checkbox"
+            checked={autoSync ?? false}
+            disabled={autoSync === undefined}
+            onChange={(event) => handleAutoSyncChange(event.target.checked)}
+          />
+          Synchronizacja automatyczna (co 6 godzin)
+        </label>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Przycisk „Synchronizuj teraz” działa niezależnie od tego ustawienia.
+        </p>
+
+        {syncError ? (
+          <p className="mt-4 rounded-md bg-red-500/15 px-4 py-2 text-sm font-bold text-red-300">
+            {syncError}
+          </p>
+        ) : null}
+
+        {syncResults ? (
+          syncResults.length === 0 ? (
+            <p className="mt-4 text-sm text-muted-foreground">
+              Brak włączonych źródeł. Dodaj je w module Drużyny.
+            </p>
+          ) : (
+            <ul className="mt-4 grid gap-2">
+              {syncResults.map((result) => (
+                <li
+                  key={result.sourceId}
+                  className="rounded-md border border-border bg-background px-3 py-2"
+                >
+                  <p className="break-all font-mono text-xs text-muted-foreground">
+                    {result.url}
+                  </p>
+                  {result.error ? (
+                    <p className="mt-1 text-sm font-bold text-red-300">
+                      {result.error}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-sm font-bold text-navy">
+                      Zapisane mecze: {result.upserted}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )
+        ) : null}
+      </section>
 
       <div className="mt-6 grid gap-3">
         {(matches ?? []).map((match) => (
