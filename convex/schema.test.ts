@@ -54,8 +54,18 @@ describe("schema", () => {
         isActive: true,
         sortOrder: 0,
       });
+      const sourceId = await ctx.db.insert("syncSources", {
+        teamId,
+        kind: "ninetyminut",
+        url: "http://www.90minut.pl/liga/1/liga14871.html",
+        externalId: "14871",
+        teamNameOnSource: "Okęcie Warszawa",
+        matchType: "liga",
+        enabled: true,
+      });
       await ctx.db.insert("standings", {
         teamId,
+        sourceId,
         competitionName: "Keeza Liga okręgowa 2026/2027, grupa: Warszawa II",
         season: "2026/2027",
         rows: [

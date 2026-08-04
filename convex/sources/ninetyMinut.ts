@@ -32,6 +32,10 @@ export type NinetyMinutPage = {
   competitionName: string;
   season: string;
   table: NinetyMinutRow[];
+  // Ile wierszy wyglądających na wiersz tabeli parser w ogóle zobaczył.
+  // Różnica względem `table.length` mówi, czy 90minut zmieniło szablon —
+  // bez tego okrojona tabela wygląda jak poprawna.
+  tableRowsSeen: number;
   matches: NinetyMinutMatch[];
 };
 
@@ -72,11 +76,13 @@ export function parseNinetyMinutPage(html: string): NinetyMinutPage | null {
   if (!season) return null;
 
   const years: [number, number] = [Number(season[1]), Number(season[2])];
+  const table = parseTable(html);
 
   return {
     competitionName,
     season: season[0],
-    table: parseTable(html),
+    table: table.rows,
+    tableRowsSeen: table.seen,
     matches: parseMatches(html, years),
   };
 }
@@ -88,16 +94,16 @@ function parseCompetitionName(html: string) {
   return header ? cleanText(header[1]) : null;
 }
 
-function parseTable(html: string): NinetyMinutRow[] {
+function parseTable(html: string): { rows: NinetyMinutRow[]; seen: number } {
   const start = html.indexOf('class="main2"');
-  if (start === -1) return [];
+  if (start === -1) return { rows: [], seen: 0 };
 
   const end = html.indexOf("</table>", start);
   const section = html.slice(start, end === -1 ? undefined : end);
   const rows = section.match(
     /<tr align="center" bgcolor="#[0-9A-Fa-f]{6}">[\s\S]*?<\/tr>/g,
   );
-  if (!rows) return [];
+  if (!rows) return { rows: [], seen: 0 };
 
   const parsed: NinetyMinutRow[] = [];
   // 90minut pokazuje numer pozycji tylko przy pierwszej drużynie
@@ -111,7 +117,7 @@ function parseTable(html: string): NinetyMinutRow[] {
     parsed.push(parsedRow);
   }
 
-  return parsed;
+  return { rows: parsed, seen: rows.length };
 }
 
 function parseTableRow(

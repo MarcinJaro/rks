@@ -25,11 +25,23 @@ export type SyncAllResult = {
 };
 
 // Klucz meczu musi być stabilny przez cały sezon: 90minut nie daje id meczu,
-// a wynik dopisuje dopiero po rozegraniu. Dlatego w kluczu siedzą wyłącznie
-// liga i znormalizowane nazwy drużyn — inaczej mecz z wynikiem trafiłby
+// a wynik dopisuje dopiero po rozegraniu. Dlatego w kluczu siedzą liga,
+// kolejka i znormalizowane nazwy drużyn — inaczej mecz z wynikiem trafiłby
 // do bazy jako druga kopia terminu.
-export function buildMatchId(leagueId: string, home: string, away: string) {
-  return `90minut:${leagueId}:${normalizeTeamName(home)}-${normalizeTeamName(away)}`;
+// Kolejka jest częścią klucza, bo w systemach 3- i 4-rundowych ta sama para
+// gra u tego samego gospodarza dwa razy w sezonie. Gdy 90minut nie poda
+// numeru kolejki, zostaje klucz bez niej — zgadywanie zastępnika rozjechałoby
+// mecz z jego wcześniejszą kopią.
+export function buildMatchId(
+  leagueId: string,
+  home: string,
+  away: string,
+  round?: number,
+) {
+  const teams = `${normalizeTeamName(home)}-${normalizeTeamName(away)}`;
+  return round === undefined
+    ? `90minut:${leagueId}:${teams}`
+    : `90minut:${leagueId}:${round}:${teams}`;
 }
 
 export const syncAll = internalAction({
@@ -51,12 +63,15 @@ export const syncAll = internalAction({
       };
 
       // Izolacja per źródło: awaria jednego serwisu nie może zatrzymać
-      // synchronizacji pozostałych drużyn.
+      // synchronizacji pozostałych drużyn. Dotyczy to tak samo błędów
+      // zgłaszanych przez sam sync (np. terminarz nie do odczytania).
       try {
-        result.upserted =
+        const outcome =
           source.kind === "ninetyminut"
             ? await syncNinetyMinut(ctx, source)
             : await syncVirium(ctx, source);
+        result.upserted = outcome.upserted;
+        result.error = outcome.error;
       } catch (error) {
         result.error = error instanceof Error ? error.message : String(error);
       }
@@ -94,7 +109,59 @@ function buildRoundLabel(round?: number, dateLabel?: string) {
   return dateLabel ? `${round}. kolejka, ${dateLabel}` : `${round}. kolejka`;
 }
 
-async function syncNinetyMinut(ctx: ActionCtx, source: Doc<"syncSources">) {
+type SourceOutcome = { upserted: number; error?: string };
+
+// Wiersz nagłówka kolumn nigdy się nie parsuje, a 90minut wtrąca czasem
+// wiersz rozdzielający strefy tabeli — przy 16 drużynach to około 6%
+// wierszy. Dopiero utrata co piątego wiersza oznacza zmianę szablonu,
+// więc podmieniamy tabelę tylko wtedy, gdy sparsowaliśmy co najmniej 80%
+// tego, co zobaczyliśmy.
+const MIN_TABLE_PARSE_RATIO = 0.8;
+
+// Tabela jest podmieniana tylko przy poprawnym parsie. Okrojona tabela
+// (zmieniony szablon części wierszy) albo tabela bez naszej drużyny
+// wygląda jak dane, a nie jak awaria — dlatego trzeba ją wyłapać tutaj.
+function tableProblem(
+  page: NinetyMinutPage,
+  source: Doc<"syncSources">,
+  ourName: string,
+) {
+  if (page.table.length < page.tableRowsSeen * MIN_TABLE_PARSE_RATIO) {
+    return `Tabela ligowa: odczytano ${page.table.length} z ${page.tableRowsSeen} wierszy. Zostawiam poprzednią tabelę.`;
+  }
+
+  if (!page.table.some((row) => normalizeTeamName(row.name) === ourName)) {
+    return `W tabeli ligowej nie ma drużyny «${source.teamNameOnSource}». Zostawiam poprzednią tabelę.`;
+  }
+
+  return null;
+}
+
+// Zerowy odczyt terminarza to najgroźniejsza cicha awaria: cron mieli
+// co sześć godzin, panel pokazuje sukces, a do bazy nie trafia nic.
+// Dlatego brak własnych meczów przy niepustej stronie jest błędem źródła.
+function matchesProblem(
+  page: NinetyMinutPage,
+  source: Doc<"syncSources">,
+  ourMatchCount: number,
+) {
+  if (ourMatchCount > 0) return null;
+
+  if (page.matches.length > 0) {
+    return `Żaden z ${page.matches.length} meczów na stronie źródła nie dotyczy drużyny «${source.teamNameOnSource}». Sprawdź nazwę drużyny u źródła.`;
+  }
+
+  if (page.table.length > 0) {
+    return "Nie znaleziono terminarza na stronie źródła.";
+  }
+
+  return null;
+}
+
+async function syncNinetyMinut(
+  ctx: ActionCtx,
+  source: Doc<"syncSources">,
+): Promise<SourceOutcome> {
   const response = await fetch(source.url, { headers: { Accept: "text/html" } });
   if (!response.ok) {
     throw new Error(`90minut zwrócił ${response.status}`);
@@ -120,6 +187,7 @@ async function syncNinetyMinut(ctx: ActionCtx, source: Doc<"syncSources">) {
         source.externalId,
         match.homeTeam,
         match.awayTeam,
+        match.round,
       ),
       sourceCompetitionId: source.externalId,
       sourceUrl: match.matchUrl ?? source.url,
@@ -139,9 +207,12 @@ async function syncNinetyMinut(ctx: ActionCtx, source: Doc<"syncSources">) {
   // `standings.replace` odrzuca pustą tabelę, żeby nie skasować dobrych danych.
   // Pusty wynik parsowania (świeża strona, zmieniony układ) nie jest błędem
   // syncu meczów, więc po prostu zostawiamy poprzednią tabelę.
-  if (page.table.length > 0) {
+  const problem = page.table.length > 0 ? tableProblem(page, source, ourName) : null;
+
+  if (page.table.length > 0 && !problem) {
     await ctx.runMutation(internal.standings.replace, {
       teamId: source.teamId,
+      sourceId: source._id,
       competitionName: page.competitionName,
       season: page.season,
       sourceUrl: source.url,
@@ -152,10 +223,23 @@ async function syncNinetyMinut(ctx: ActionCtx, source: Doc<"syncSources">) {
     });
   }
 
-  return ours.length;
+  // Błąd zgłaszamy dopiero po zapisie tego, co udało się odczytać — żeby
+  // literówka w nazwie drużyny nie kasowała poprawnej tabeli, a awaria
+  // jednego źródła nie zatrzymywała pozostałych.
+  const problems = [matchesProblem(page, source, ours.length), problem].filter(
+    (entry): entry is string => entry !== null,
+  );
+
+  return {
+    upserted: ours.length,
+    error: problems.length > 0 ? problems.join(" ") : undefined,
+  };
 }
 
-async function syncVirium(ctx: ActionCtx, source: Doc<"syncSources">) {
+async function syncVirium(
+  ctx: ActionCtx,
+  source: Doc<"syncSources">,
+): Promise<SourceOutcome> {
   const response = await fetch(source.url, { headers: { Accept: "text/html" } });
   if (!response.ok) {
     throw new Error(`virium zwrócił ${response.status}`);
@@ -182,5 +266,5 @@ async function syncVirium(ctx: ActionCtx, source: Doc<"syncSources">) {
     });
   }
 
-  return page.matches.length;
+  return { upserted: page.matches.length };
 }

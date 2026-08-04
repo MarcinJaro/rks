@@ -190,6 +190,10 @@ export default defineSchema({
 
   standings: defineTable({
     teamId: v.id("teams"),
+    // Drużyna bywa zgłoszona w kilku rozgrywkach naraz (liga + puchar),
+    // a każde źródło ma własną tabelę — bez tego pola ostatni sync
+    // nadpisywałby tabelę poprzedniego.
+    sourceId: v.id("syncSources"),
     competitionName: v.string(),
     season: v.string(),
     rows: v.array(
@@ -208,7 +212,9 @@ export default defineSchema({
     ),
     syncedAt: v.number(),
     sourceUrl: v.optional(v.string()),
-  }).index("by_team", ["teamId"]),
+  })
+    .index("by_team", ["teamId"])
+    .index("by_source", ["sourceId"]),
 
   appSettings: defineTable({
     key: v.string(),

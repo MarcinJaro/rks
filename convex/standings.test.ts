@@ -1,6 +1,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { api, internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
 
 const asAdmin = { subject: "admin|1", issuer: "https://example.com" };
@@ -29,13 +30,33 @@ async function seedTeam(t: ReturnType<typeof convexTest>) {
   );
 }
 
+async function seedSource(
+  t: ReturnType<typeof convexTest>,
+  teamId: Id<"teams">,
+  matchType: "liga" | "puchar" = "liga",
+) {
+  return await t.run(async (ctx) =>
+    ctx.db.insert("syncSources", {
+      teamId,
+      kind: "ninetyminut",
+      url: `http://www.90minut.pl/liga/1/liga${matchType === "liga" ? "14871" : "14999"}.html`,
+      externalId: matchType === "liga" ? "14871" : "14999",
+      teamNameOnSource: "Okęcie Warszawa",
+      matchType,
+      enabled: true,
+    }),
+  );
+}
+
 describe("standings", () => {
   it("zapisuje tabelę i zwraca ją publicznie", async () => {
     const t = convexTest(schema);
     const teamId = await seedTeam(t);
+    const sourceId = await seedSource(t, teamId);
 
     await t.mutation(internal.standings.replace, {
       teamId,
+      sourceId,
       competitionName: "Liga okręgowa",
       season: "2026/2027",
       rows: [row],
@@ -51,15 +72,18 @@ describe("standings", () => {
   it("podmienia istniejącą tabelę zamiast dopisywać", async () => {
     const t = convexTest(schema);
     const teamId = await seedTeam(t);
+    const sourceId = await seedSource(t, teamId);
 
     await t.mutation(internal.standings.replace, {
       teamId,
+      sourceId,
       competitionName: "Liga okręgowa",
       season: "2026/2027",
       rows: [row],
     });
     await t.mutation(internal.standings.replace, {
       teamId,
+      sourceId,
       competitionName: "Liga okręgowa",
       season: "2026/2027",
       rows: [{ ...row, points: 9 }],
@@ -73,9 +97,11 @@ describe("standings", () => {
   it("odrzuca pustą tabelę, żeby nie skasować dobrych danych", async () => {
     const t = convexTest(schema);
     const teamId = await seedTeam(t);
+    const sourceId = await seedSource(t, teamId);
 
     await t.mutation(internal.standings.replace, {
       teamId,
+      sourceId,
       competitionName: "Liga okręgowa",
       season: "2026/2027",
       rows: [row],
@@ -83,6 +109,7 @@ describe("standings", () => {
     await expect(
       t.mutation(internal.standings.replace, {
         teamId,
+        sourceId,
         competitionName: "Liga okręgowa",
         season: "2026/2027",
         rows: [],
@@ -91,6 +118,57 @@ describe("standings", () => {
 
     const table = await t.query(api.standings.byTeam, { teamId });
     expect(table!.rows).toHaveLength(1);
+  });
+
+  it("trzyma osobną tabelę dla każdego źródła drużyny", async () => {
+    const t = convexTest(schema);
+    const teamId = await seedTeam(t);
+    const league = await seedSource(t, teamId, "liga");
+    const cup = await seedSource(t, teamId, "puchar");
+
+    await t.mutation(internal.standings.replace, {
+      teamId,
+      sourceId: league,
+      competitionName: "Liga okręgowa",
+      season: "2026/2027",
+      rows: [row],
+    });
+    await t.mutation(internal.standings.replace, {
+      teamId,
+      sourceId: cup,
+      competitionName: "Puchar Polski",
+      season: "2026/2027",
+      rows: [{ ...row, name: "Champion Warszawa", isRks: false }],
+    });
+
+    const all = await t.run(async (ctx) => ctx.db.query("standings").collect());
+    expect(all).toHaveLength(2);
+  });
+
+  it("byTeam zwraca tabelę ligową, gdy źródeł jest kilka", async () => {
+    const t = convexTest(schema);
+    const teamId = await seedTeam(t);
+    const league = await seedSource(t, teamId, "liga");
+    const cup = await seedSource(t, teamId, "puchar");
+
+    // Puchar synchronizuje się jako ostatni — i tak ma wygrać tabela ligowa.
+    await t.mutation(internal.standings.replace, {
+      teamId,
+      sourceId: league,
+      competitionName: "Liga okręgowa",
+      season: "2026/2027",
+      rows: [row],
+    });
+    await t.mutation(internal.standings.replace, {
+      teamId,
+      sourceId: cup,
+      competitionName: "Puchar Polski",
+      season: "2026/2027",
+      rows: [{ ...row, name: "Champion Warszawa", isRks: false }],
+    });
+
+    const table = await t.query(api.standings.byTeam, { teamId });
+    expect(table!.competitionName).toBe("Liga okręgowa");
   });
 });
 

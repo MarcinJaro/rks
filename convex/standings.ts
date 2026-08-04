@@ -17,6 +17,7 @@ const standingsRow = v.object({
 export const replace = internalMutation({
   args: {
     teamId: v.id("teams"),
+    sourceId: v.id("syncSources"),
     competitionName: v.string(),
     season: v.string(),
     rows: v.array(standingsRow),
@@ -27,13 +28,16 @@ export const replace = internalMutation({
       throw new Error("Tabela jest pusta — pomijam zapis.");
     }
 
+    // Klucz to źródło, nie drużyna: liga i puchar tej samej drużyny
+    // mają własne tabele i nie mogą się nawzajem nadpisywać.
     const existing = await ctx.db
       .query("standings")
-      .withIndex("by_team", (q) => q.eq("teamId", args.teamId))
+      .withIndex("by_source", (q) => q.eq("sourceId", args.sourceId))
       .first();
 
     const fields = {
       teamId: args.teamId,
+      sourceId: args.sourceId,
       competitionName: args.competitionName,
       season: args.season,
       rows: args.rows,
@@ -50,12 +54,23 @@ export const replace = internalMutation({
   },
 });
 
+// Publicznie pokazujemy jedną tabelę na drużynę — tę z rozgrywek ligowych.
+// Tabele pucharowe czy turniejowe są dodatkiem i nie mogą jej wypierać.
 export const byTeam = query({
   args: { teamId: v.id("teams") },
   handler: async (ctx, { teamId }) => {
-    return await ctx.db
+    const tables = await ctx.db
       .query("standings")
       .withIndex("by_team", (q) => q.eq("teamId", teamId))
-      .first();
+      .take(10);
+
+    if (tables.length <= 1) return tables[0] ?? null;
+
+    for (const table of tables) {
+      const source = await ctx.db.get(table.sourceId);
+      if (source?.matchType === "liga") return table;
+    }
+
+    return tables[0];
   },
 });

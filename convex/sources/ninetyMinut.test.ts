@@ -17,7 +17,7 @@ const freshSeason = readFileSync(
 
 // Minimalna strona o strukturze 90minut — do testowania przypadków brzegowych,
 // których nie ma w zapisanych próbkach.
-function withRows(rows: string) {
+function withRows(rows: string, tableRows = "") {
   return `<html><body>
 <table class="main2">
 <tr>
@@ -25,11 +25,19 @@ function withRows(rows: string) {
 <b>Testowa Liga okręgowa 2025/2026, grupa: Warszawa II</b>
 </td>
 </tr>
+${tableRows}
 </table>
 <table>
 ${rows}
 </table>
 </body></html>`;
+}
+
+function standingsRow(position: number, name: string, goals = "12 - 15") {
+  return `<tr align="center" bgcolor="#FFFFFF">
+<td>${position}.</td><td>${name}</td><td>10</td><td>20</td>
+<td>3</td><td>1</td><td>6</td><td>${goals}</td>
+</tr>`;
 }
 
 function matchRow(home: string, score: string, away: string, date: string) {
@@ -112,6 +120,12 @@ describe("parseNinetyMinutPage — sezon rozegrany", () => {
       goalsFor: 80,
       goalsAgainst: 32,
     });
+  });
+
+  it("raportuje, ile wierszy tabeli widział", () => {
+    // 16 drużyn + wiersz nagłówka kolumn.
+    expect(page.tableRowsSeen).toBe(17);
+    expect(page.table).toHaveLength(16);
   });
 
   it("pomija wiersz nagłówka tabeli", () => {
@@ -340,6 +354,44 @@ describe("parseNinetyMinutPage — przypadki brzegowe", () => {
       withRows(matchRow("Okęcie Warszawa", "-", "KS Raszyn", "4 mgliste, 11:00")),
     )!;
     expect(page.matches).toHaveLength(0);
+  });
+});
+
+describe("parseNinetyMinutPage — kompletność tabeli", () => {
+  it("liczy wiersze, których nie udało się sparsować", () => {
+    const page = parseNinetyMinutPage(
+      withRows(
+        "",
+        [
+          standingsRow(1, "Okęcie Warszawa"),
+          // Zmieniony szablon: komórka z bramkami nie do odczytania.
+          standingsRow(2, "Champion Warszawa", "brak danych"),
+          standingsRow(3, "KS Raszyn", "nie rozegrano"),
+        ].join("\n"),
+      ),
+    )!;
+    expect(page.tableRowsSeen).toBe(3);
+    expect(page.table).toHaveLength(1);
+  });
+
+  it("dla poprawnej tabeli widziane i sparsowane są równe", () => {
+    const page = parseNinetyMinutPage(
+      withRows(
+        "",
+        [
+          standingsRow(1, "Okęcie Warszawa"),
+          standingsRow(2, "Champion Warszawa"),
+        ].join("\n"),
+      ),
+    )!;
+    expect(page.tableRowsSeen).toBe(2);
+    expect(page.table).toHaveLength(2);
+  });
+
+  it("pusta strona nie widzi żadnego wiersza tabeli", () => {
+    const page = parseNinetyMinutPage(withRows(""))!;
+    expect(page.tableRowsSeen).toBe(0);
+    expect(page.table).toHaveLength(0);
   });
 });
 

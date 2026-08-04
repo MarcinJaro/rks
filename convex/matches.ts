@@ -35,6 +35,11 @@ const matchSource = v.union(
 // przez tydzień od tej daty, żeby nie znikały ze strony w dniu meczu.
 const APPROXIMATE_DATE_GRACE = 7 * 24 * 60 * 60 * 1000;
 
+// Zapas wierszy na mecze z drugiego końca zakresu (rozegrane w oknie
+// tolerancji albo nierozegrane mimo minionego terminu), które odpadną
+// przy filtrowaniu po statusie.
+const SCAN_MARGIN = 20;
+
 function isStillUpcoming(
   match: { date: number; dateConfirmed?: boolean },
   now: number,
@@ -104,40 +109,58 @@ export const center = query({
       return { nextMatch: null, upcoming: [], latestResults: [] };
     }
 
+    const upcomingCount = upcomingLimit || 8;
+    const resultsCount = latestLimit || 8;
+
+    // Terminarz drużyny czytamy zakresem po dacie, a nie od początku
+    // istnienia klubu: po pierwszym sezonie 30 najstarszych meczów to same
+    // wyniki i drużyna zostawała bez nadchodzących spotkań. Dolna granica
+    // cofa się o tolerancję terminów orientacyjnych, żeby mecz z kolejki
+    // sprzed kilku dni nie wypadł z zakresu.
     const upcomingMatches = team
       ? (
           await ctx.db
             .query("matches")
-            .withIndex("by_team", (q) => q.eq("teamId", team._id))
+            .withIndex("by_team", (q) =>
+              q
+                .eq("teamId", team._id)
+                .gte("date", now - APPROXIMATE_DATE_GRACE),
+            )
             .order("asc")
-            .take(30)
-        ).filter((match) => match.status === "upcoming")
+            .take(upcomingCount + SCAN_MARGIN)
+        )
+          .filter((match) => match.status === "upcoming")
+          .slice(0, upcomingCount)
       : await ctx.db
           .query("matches")
           .withIndex("by_status", (q) => q.eq("status", "upcoming"))
           .order("asc")
-          .take(upcomingLimit || 8);
+          .take(upcomingCount);
 
     const upcoming = upcomingMatches.filter((match) =>
       isStillUpcoming(match, now),
     );
     const nextMatch = upcoming[0] || upcomingMatches[0] || null;
 
+    // Symetrycznie dla wyników: bez górnej granicy pełny terminarz przyszłych
+    // kolejek wypychał rozegrane mecze poza okno odczytu.
     const latestResults = team
       ? (
           await ctx.db
             .query("matches")
-            .withIndex("by_team", (q) => q.eq("teamId", team._id))
+            .withIndex("by_team", (q) =>
+              q.eq("teamId", team._id).lte("date", now),
+            )
             .order("desc")
-            .take(30)
+            .take(resultsCount + SCAN_MARGIN)
         )
           .filter((match) => match.status === "finished")
-          .slice(0, latestLimit || 8)
+          .slice(0, resultsCount)
       : await ctx.db
           .query("matches")
           .withIndex("by_status", (q) => q.eq("status", "finished"))
           .order("desc")
-          .take(latestLimit || 8);
+          .take(resultsCount);
 
     return { nextMatch, upcoming, latestResults };
   },

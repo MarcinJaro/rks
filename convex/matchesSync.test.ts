@@ -73,19 +73,41 @@ function mockFetchReturning(html: string, ok = true) {
 
 // Minimalna strona o strukturze 90minut — pozwala sterować tym,
 // czy mecz ma już wynik i czy tabela jest pusta.
-function leaguePage(rows: string) {
+function leaguePage(
+  rows: string,
+  options: { tableRows?: string; title?: string } = {},
+) {
+  const title =
+    options.title ?? "Testowa Liga okręgowa 2025/2026, grupa: Warszawa II";
   return `<html><body>
 <table class="main2">
 <tr>
 <td colspan="14" class="main">
-<b>Testowa Liga okręgowa 2025/2026, grupa: Warszawa II</b>
+<b>${title}</b>
 </td>
 </tr>
+${options.tableRows ?? ""}
 </table>
 <table>
 ${rows}
 </table>
 </body></html>`;
+}
+
+function tableRow(position: number, name: string, points = 10) {
+  return `<tr align="center" bgcolor="#FFFFFF">
+<td>${position}.</td><td>${name}</td><td>10</td><td>${points}</td>
+<td>3</td><td>1</td><td>6</td><td>12 - 15</td>
+</tr>`;
+}
+
+// Wiersz, którego parser nie rozpozna — imituje zmianę szablonu 90minut
+// w części wierszy tabeli.
+function brokenTableRow(name: string) {
+  return `<tr align="center" bgcolor="#FFFFFF">
+<td>?</td><td>${name}</td><td>10</td><td>10</td>
+<td>3</td><td>1</td><td>6</td><td>brak</td>
+</tr>`;
 }
 
 function matchRow(home: string, score: string, away: string, date: string) {
@@ -122,12 +144,13 @@ async function addSource(
   teamId: Id<"teams">,
   url: string,
   teamNameOnSource: string,
+  matchType: "liga" | "puchar" = "liga",
 ) {
   await t.withIdentity(asAdmin).mutation(api.syncSources.add, {
     teamId,
     url,
     teamNameOnSource,
-    matchType: "liga",
+    matchType,
   });
 }
 
@@ -152,6 +175,20 @@ describe("buildMatchId", () => {
     expect(buildMatchId("14256", "Okęcie Warszawa", "Champion Warszawa")).not.toBe(
       buildMatchId("14256", "Champion Warszawa", "Okęcie Warszawa"),
     );
+  });
+
+  it("rozróżnia mecze tej samej pary z różnych kolejek", () => {
+    expect(
+      buildMatchId("14256", "Okęcie Warszawa", "Champion Warszawa", 1),
+    ).not.toBe(
+      buildMatchId("14256", "Okęcie Warszawa", "Champion Warszawa", 16),
+    );
+  });
+
+  it("wstawia numer kolejki do klucza", () => {
+    expect(
+      buildMatchId("14256", "Okęcie Warszawa", "Champion Warszawa", 16),
+    ).toBe("90minut:14256:16:okecie warszawa-champion warszawa");
   });
 });
 
@@ -185,6 +222,45 @@ describe("syncAll", () => {
     const table = await t.query(api.standings.byTeam, { teamId });
     expect(table!.rows.length).toBeGreaterThan(0);
     expect(table!.rows.some((row) => row.isRks)).toBe(true);
+  });
+
+  it("zapisuje oba mecze tej samej pary u tego samego gospodarza", async () => {
+    const t = convexTest(schema);
+    await seedTeamWithSource(t);
+    // Systemy 3- i 4-rundowe: ta sama para gra u tego samego gospodarza
+    // dwa razy w sezonie, więc klucz meczu musi zawierać kolejkę.
+    mockFetchReturning(
+      leaguePage(
+        [
+          roundHeader("Kolejka 1 - 8-9 sierpnia"),
+          matchRow(
+            "Okęcie Warszawa",
+            "2-1",
+            "Champion Warszawa",
+            "9 sierpnia, 15:00",
+          ),
+          roundHeader("Kolejka 16 - 22 kwietnia"),
+          matchRow(
+            "Okęcie Warszawa",
+            "1-1",
+            "Champion Warszawa",
+            "22 kwietnia, 15:00",
+          ),
+        ].join("\n"),
+      ),
+    );
+
+    const { results } = await t.action(internal.matchesSync.syncAll, {
+      force: true,
+    });
+    expect(results[0].error).toBeUndefined();
+    expect(results[0].upserted).toBe(2);
+
+    const matches = await t.run(async (ctx) =>
+      ctx.db.query("matches").collect(),
+    );
+    expect(matches).toHaveLength(2);
+    expect(matches.map((match) => match.result).sort()).toEqual(["1:1", "2:1"]);
   });
 
   it("nie duplikuje meczów przy powtórnym uruchomieniu", async () => {
@@ -417,6 +493,218 @@ describe("syncAll", () => {
 
     const table = await t.query(api.standings.byTeam, { teamId });
     expect(table!.rows).toEqual(saved!.rows);
+  });
+
+  it("puchar nie kasuje tabeli ligowej tej samej drużyny", async () => {
+    const t = convexTest(schema);
+    const teamId = await seedTeam(t);
+    await addSource(t, teamId, LEAGUE_URL, "Okęcie Warszawa", "liga");
+    await addSource(
+      t,
+      teamId,
+      "http://www.90minut.pl/liga/1/liga14999.html",
+      "Okęcie Warszawa",
+      "puchar",
+    );
+
+    const standingsRows = [
+      tableRow(1, "Okęcie Warszawa", 30),
+      tableRow(2, "Champion Warszawa", 20),
+    ].join("\n");
+    const matches = matchRow(
+      "Okęcie Warszawa",
+      "2-1",
+      "Champion Warszawa",
+      "12 października, 15:00",
+    );
+
+    stubFetch([
+      [
+        /liga14999/,
+        {
+          html: leaguePage(matches, {
+            tableRows: standingsRows,
+            title: "Puchar Polski 2025/2026, grupa: Warszawa",
+          }),
+        },
+      ],
+      [
+        /liga14256/,
+        {
+          html: leaguePage(matches, {
+            tableRows: standingsRows,
+            title: "Testowa Liga okręgowa 2025/2026, grupa: Warszawa II",
+          }),
+        },
+      ],
+    ]);
+
+    const { results } = await t.action(internal.matchesSync.syncAll, {
+      force: true,
+    });
+    expect(results.every((entry) => entry.error === undefined)).toBe(true);
+
+    const all = await t.run(async (ctx) => ctx.db.query("standings").collect());
+    expect(all).toHaveLength(2);
+
+    const table = await t.query(api.standings.byTeam, { teamId });
+    expect(table!.competitionName).toContain("Liga okręgowa");
+  });
+
+  it("częściowo sparsowana tabela nie podmienia poprzedniej", async () => {
+    const t = convexTest(schema);
+    const teamId = await seedTeamWithSource(t);
+    const matches = matchRow(
+      "Okęcie Warszawa",
+      "2-1",
+      "Champion Warszawa",
+      "12 października, 15:00",
+    );
+
+    mockFetchReturning(
+      leaguePage(matches, {
+        tableRows: [
+          tableRow(1, "Okęcie Warszawa", 30),
+          tableRow(2, "Champion Warszawa", 20),
+          tableRow(3, "KS Raszyn", 10),
+        ].join("\n"),
+      }),
+    );
+    await t.action(internal.matchesSync.syncAll, { force: true });
+    const saved = await t.query(api.standings.byTeam, { teamId });
+    expect(saved!.rows).toHaveLength(3);
+
+    // 90minut zmienia szablon części wierszy — do bazy nie może trafić
+    // okrojona tabela.
+    mockFetchReturning(
+      leaguePage(matches, {
+        tableRows: [
+          tableRow(1, "Okęcie Warszawa", 30),
+          brokenTableRow("Champion Warszawa"),
+          brokenTableRow("KS Raszyn"),
+        ].join("\n"),
+      }),
+    );
+    const { results } = await t.action(internal.matchesSync.syncAll, {
+      force: true,
+    });
+
+    expect(results[0].error).toMatch(/tabel/i);
+    expect(results[0].upserted).toBe(1);
+
+    const table = await t.query(api.standings.byTeam, { teamId });
+    expect(table!.rows).toEqual(saved!.rows);
+
+    const [source] = await t
+      .withIdentity(asAdmin)
+      .query(api.syncSources.listByTeam, { teamId });
+    expect(source.lastError).toMatch(/tabel/i);
+  });
+
+  it("tabela bez naszej drużyny nie podmienia poprzedniej", async () => {
+    const t = convexTest(schema);
+    const teamId = await seedTeamWithSource(t);
+
+    mockFetchReturning(
+      leaguePage(
+        matchRow(
+          "Okęcie Warszawa",
+          "2-1",
+          "Champion Warszawa",
+          "12 października, 15:00",
+        ),
+        {
+          tableRows: [
+            tableRow(1, "Champion Warszawa", 30),
+            tableRow(2, "KS Raszyn", 20),
+          ].join("\n"),
+        },
+      ),
+    );
+
+    const { results } = await t.action(internal.matchesSync.syncAll, {
+      force: true,
+    });
+    expect(results[0].error).toMatch(/Okęcie Warszawa/);
+
+    const table = await t.query(api.standings.byTeam, { teamId });
+    expect(table).toBeNull();
+  });
+
+  it("zgłasza błąd, gdy żaden mecz nie dotyczy naszej drużyny", async () => {
+    const t = convexTest(schema);
+    const teamId = await seedTeamWithSource(t);
+    // Literówka w nazwie drużyny u źródła albo zmiana szablonu wiersza:
+    // sync „udaje się", ale nie zapisuje niczego.
+    mockFetchReturning(
+      leaguePage(
+        [
+          matchRow("KS Raszyn", "2-1", "Champion Warszawa", "12 października, 15:00"),
+          matchRow("Milan Milanówek", "0-0", "Unia Warszawa", "13 października, 15:00"),
+        ].join("\n"),
+      ),
+    );
+
+    const { results } = await t.action(internal.matchesSync.syncAll, {
+      force: true,
+    });
+
+    expect(results[0].upserted).toBe(0);
+    expect(results[0].error).toMatch(/nie dotyczy drużyny «Okęcie Warszawa»/);
+    expect(results[0].error).toMatch(/Sprawdź nazwę drużyny/);
+
+    const [source] = await t
+      .withIdentity(asAdmin)
+      .query(api.syncSources.listByTeam, { teamId });
+    expect(source.lastError).toBeTruthy();
+  });
+
+  it("zgłasza brak terminarza przy niepustej tabeli", async () => {
+    const t = convexTest(schema);
+    const teamId = await seedTeamWithSource(t);
+    mockFetchReturning(
+      leaguePage("", {
+        tableRows: [
+          tableRow(1, "Okęcie Warszawa", 30),
+          tableRow(2, "Champion Warszawa", 20),
+        ].join("\n"),
+      }),
+    );
+
+    const { results } = await t.action(internal.matchesSync.syncAll, {
+      force: true,
+    });
+
+    expect(results[0].upserted).toBe(0);
+    expect(results[0].error).toMatch(/terminarz/i);
+
+    // Tabela jest poprawna, więc mimo błędu terminarza zostaje zapisana.
+    const table = await t.query(api.standings.byTeam, { teamId });
+    expect(table!.rows).toHaveLength(2);
+  });
+
+  it("błąd pustego parsu nie przerywa syncu pozostałych źródeł", async () => {
+    const t = convexTest(schema);
+    const seniors = await seedTeam(t, "seniorzy");
+    const juniors = await seedTeam(t, "rocznik-2012");
+    await addSource(t, seniors, LEAGUE_URL, "Okecie Warszwa");
+    await addSource(t, juniors, VIRIUM_URL, "RKS Okęcie");
+
+    stubFetch([
+      [/90minut\.pl/, { html: leagueHtmlUtf8 }],
+      [/virium\.pl/, { html: viriumHtml }],
+    ]);
+
+    const { results } = await t.action(internal.matchesSync.syncAll, {
+      force: true,
+    });
+
+    const broken = results.find((entry) => entry.url === LEAGUE_URL)!;
+    const healthy = results.find((entry) => entry.url === VIRIUM_URL)!;
+    expect(broken.error).toMatch(/nie dotyczy drużyny/);
+    expect(broken.upserted).toBe(0);
+    expect(healthy.error).toBeUndefined();
+    expect(healthy.upserted).toBeGreaterThan(0);
   });
 
   it("pomija sync gdy auto-sync wyłączony i brak force", async () => {
