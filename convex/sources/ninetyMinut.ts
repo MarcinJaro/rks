@@ -17,6 +17,11 @@ export type NinetyMinutMatch = {
   homeTeam: string;
   awayTeam: string;
   date: number;
+  // false, gdy termin pochodzi z zakresu w nagłówku kolejki,
+  // a nie z własnej daty meczu.
+  dateConfirmed: boolean;
+  round?: number;
+  roundDateLabel?: string;
   result?: string;
   note?: string;
   matchUrl?: string;
@@ -142,13 +147,88 @@ function parseTableRow(
   };
 }
 
+type RoundSegment = {
+  html: string;
+  round?: number;
+  dateLabel?: string;
+  // Termin zastępczy dla meczów, przy których 90minut nie podał jeszcze daty.
+  fallbackDate: number | null;
+};
+
+// Nagłówek kolejki to osobna tabela wpleciona między tabele meczów,
+// więc kolejkę meczu da się ustalić tylko czytając dokument po kolei.
+const ROUND_HEADER =
+  /<b><u>\s*Kolejka\s+(\d+)\s*(?:-\s*([^<]*?))?\s*<\/u><\/b>/g;
+
+function splitIntoRounds(html: string, years: [number, number]): RoundSegment[] {
+  const headers = [...html.matchAll(ROUND_HEADER)];
+  if (headers.length === 0) {
+    return [{ html, fallbackDate: null }];
+  }
+
+  const segments: RoundSegment[] = [];
+  // Mecze sprzed pierwszego nagłówka nie należą do żadnej kolejki,
+  // więc zostają przy własnych datach albo odpadają.
+  if (headers[0].index > 0) {
+    segments.push({ html: html.slice(0, headers[0].index), fallbackDate: null });
+  }
+
+  headers.forEach((header, index) => {
+    const start = header.index + header[0].length;
+    const end = headers[index + 1]?.index ?? html.length;
+    const dateLabel = cleanText(header[2] ?? "") || undefined;
+
+    segments.push({
+      html: html.slice(start, end),
+      round: Number(header[1]),
+      dateLabel,
+      fallbackDate: dateLabel ? parseRoundDate(dateLabel, years) : null,
+    });
+  });
+
+  return segments;
+}
+
+// Zakres w nagłówku ma postać „8-9 sierpnia" albo „2 listopada".
+// Cokolwiek innego zostawiamy — zgadywanie terminu byłoby gorsze niż jego brak.
+function parseRoundDate(label: string, years: [number, number]) {
+  const parsed = label.match(
+    /^(\d{1,2})(?:\s*-\s*\d{1,2})?\s+([A-Za-ząćęłńóśźżĄĆĘŁŃÓŚŹŻ]+)$/,
+  );
+  if (!parsed) return null;
+
+  const month = MONTHS[parsed[2].toLowerCase()];
+  if (!month) return null;
+
+  return polishDateToUtc(
+    seasonYear(month, years),
+    month,
+    Number(parsed[1]),
+    12,
+    0,
+  );
+}
+
+function seasonYear(month: number, years: [number, number]) {
+  return month >= 7 ? years[0] : years[1];
+}
+
 function parseMatches(
   html: string,
   years: [number, number],
 ): NinetyMinutMatch[] {
+  return splitIntoRounds(html, years).flatMap((segment) =>
+    parseRoundMatches(segment, years),
+  );
+}
+
+function parseRoundMatches(
+  segment: RoundSegment,
+  years: [number, number],
+): NinetyMinutMatch[] {
   // Wiersze meczów i notatek mają align="left"; znacznik walkowera
   // siedzi w wierszu bez atrybutów, dlatego bierzemy oba warianty.
-  const rows = html.match(/<tr(?: align="left")?>[\s\S]*?<\/tr>/g);
+  const rows = segment.html.match(/<tr(?: align="left")?>[\s\S]*?<\/tr>/g);
   if (!rows) return [];
 
   const matches: NinetyMinutMatch[] = [];
@@ -178,7 +258,8 @@ function parseMatches(
 
     const homeTeam = cleanText(cells[0][1]);
     const awayTeam = cleanText(cells[2][1]);
-    const date = parseMatchDate(cleanText(cells[3][1]), years);
+    const ownDate = parseMatchDate(cleanText(cells[3][1]), years);
+    const date = ownDate ?? segment.fallbackDate;
     if (!homeTeam || !awayTeam || date === null) {
       annotated = null;
       continue;
@@ -192,6 +273,9 @@ function parseMatches(
       homeTeam,
       awayTeam,
       date,
+      dateConfirmed: ownDate !== null,
+      round: segment.round,
+      roundDateLabel: segment.dateLabel,
       result: result ? `${result[1]}:${result[2]}` : undefined,
       matchUrl,
     };
@@ -212,9 +296,8 @@ function parseMatchDate(value: string, years: [number, number]) {
   const month = MONTHS[parsed[2].toLowerCase()];
   if (!month) return null;
 
-  const year = month >= 7 ? years[0] : years[1];
   return polishDateToUtc(
-    year,
+    seasonYear(month, years),
     month,
     Number(parsed[1]),
     parsed[3] ? Number(parsed[3]) : 12,

@@ -27,6 +27,36 @@ function formatDate(timestamp: number) {
   }).format(new Date(timestamp));
 }
 
+function formatDay(timestamp: number) {
+  return new Intl.DateTimeFormat("pl-PL", {
+    day: "numeric",
+    month: "long",
+  }).format(new Date(timestamp));
+}
+
+// Zanim związek poda dokładny termin, 90minut zna tylko kolejkę i jej zakres dat.
+// Pokazujemy wtedy kolejkę zamiast zmyślonej godziny.
+function isTentative(match: MatchItem) {
+  return match.dateConfirmed === false;
+}
+
+function matchDateLabel(match: MatchItem) {
+  if (!isTentative(match)) return formatDate(match.date);
+  return match.roundLabel || formatDay(match.date);
+}
+
+function TentativeDateNote({ size = "sm" }: { size?: "sm" | "xs" }) {
+  return (
+    <span
+      className={`rounded-md bg-white/10 px-2 py-1 font-black uppercase text-white/70 ${
+        size === "xs" ? "text-[10px]" : "text-xs"
+      }`}
+    >
+      Termin do ustalenia
+    </span>
+  );
+}
+
 function EmptyMatchState() {
   return (
     <div className="rounded-[18px] border border-dashed border-white/15 bg-muted p-6">
@@ -55,8 +85,9 @@ function NextMatchCard({ match }: { match: MatchItem | null }) {
         {match.homeTeam} - {match.awayTeam}
       </h3>
       <div className="mt-6 grid gap-3 text-sm font-bold text-muted-foreground sm:grid-cols-2">
-        <p className="flex items-center gap-2">
-          <CalendarDays size={18} /> {formatDate(match.date)}
+        <p className="flex flex-wrap items-center gap-2">
+          <CalendarDays size={18} /> {matchDateLabel(match)}
+          {isTentative(match) ? <TentativeDateNote /> : null}
         </p>
         {match.venue ? (
           <p className="flex items-center gap-2">
@@ -155,8 +186,9 @@ function UpcomingList({ matches }: { matches: MatchItem[] }) {
               <p className="text-base font-black text-white">
                 {match.homeTeam} - {match.awayTeam}
               </p>
-              <p className="mt-2 flex items-center gap-2 text-sm font-bold text-muted-foreground">
-                <CalendarDays size={16} /> {formatDate(match.date)}
+              <p className="mt-2 flex flex-wrap items-center gap-2 text-sm font-bold text-muted-foreground">
+                <CalendarDays size={16} /> {matchDateLabel(match)}
+                {isTentative(match) ? <TentativeDateNote size="xs" /> : null}
               </p>
             </div>
             <span className="inline-flex w-fit items-center gap-2 rounded-md bg-white/10 px-3 py-2 text-xs font-black uppercase text-white">

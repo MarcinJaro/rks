@@ -97,6 +97,15 @@ function matchRow(home: string, score: string, away: string, date: string) {
 </tr>`;
 }
 
+function roundHeader(label: string) {
+  return `<tr>
+<td colspan="3">
+<img src="http://img.90minut.pl/img/redarrowl.gif" width="15" height="15" align="absmiddle">
+ <b><u>${label}</u></b>
+</td>
+</tr>`;
+}
+
 async function seedTeam(t: ReturnType<typeof convexTest>, slug = "seniorzy") {
   return await t.run(async (ctx) =>
     ctx.db.insert("teams", {
@@ -168,6 +177,10 @@ describe("syncAll", () => {
     ).toBe(true);
     expect(matches.every((match) => match.teamId === teamId)).toBe(true);
     expect(matches.every((match) => match.source === "ninetyminut")).toBe(true);
+    expect(matches.every((match) => match.dateConfirmed === true)).toBe(true);
+    expect(
+      matches.some((match) => match.roundLabel === "1. kolejka, 9-10 sierpnia"),
+    ).toBe(true);
 
     const table = await t.query(api.standings.byTeam, { teamId });
     expect(table!.rows.length).toBeGreaterThan(0);
@@ -217,6 +230,75 @@ describe("syncAll", () => {
     expect(after[0].result).toBe("3:1");
     expect(after[0].status).toBe("finished");
     expect(after[0]._id).toBe(before[0]._id);
+  });
+
+  it("mecz bez wyniku z minioną potwierdzoną datą jest finished", async () => {
+    const t = convexTest(schema);
+    await seedTeamWithSource(t);
+    mockFetchReturning(
+      leaguePage(
+        matchRow(
+          "Okęcie Warszawa",
+          "",
+          "Champion Warszawa",
+          "12 października, 15:00",
+        ),
+      ),
+    );
+
+    await t.action(internal.matchesSync.syncAll, { force: true });
+    const [match] = await t.run(async (ctx) =>
+      ctx.db.query("matches").collect(),
+    );
+    expect(match.dateConfirmed).toBe(true);
+    expect(match.status).toBe("finished");
+  });
+
+  it("mecz z terminem orientacyjnym zostaje upcoming mimo minionej daty", async () => {
+    const t = convexTest(schema);
+    await seedTeamWithSource(t);
+    // Sezon 2025/2026, więc data z nagłówka kolejki wypada w przeszłości.
+    mockFetchReturning(
+      leaguePage(
+        [
+          roundHeader("Kolejka 1 - 8-9 sierpnia"),
+          matchRow("Okęcie Warszawa", "", "Champion Warszawa", ""),
+        ].join("\n"),
+      ),
+    );
+
+    const { results } = await t.action(internal.matchesSync.syncAll, {
+      force: true,
+    });
+    expect(results[0].upserted).toBe(1);
+
+    const [match] = await t.run(async (ctx) =>
+      ctx.db.query("matches").collect(),
+    );
+    expect(match.dateConfirmed).toBe(false);
+    expect(match.roundLabel).toBe("1. kolejka, 8-9 sierpnia");
+    expect(match.date).toBeLessThan(Date.now());
+    expect(match.status).toBe("upcoming");
+  });
+
+  it("mecz z terminem orientacyjnym i wynikiem jest finished", async () => {
+    const t = convexTest(schema);
+    await seedTeamWithSource(t);
+    mockFetchReturning(
+      leaguePage(
+        [
+          roundHeader("Kolejka 1 - 8-9 sierpnia"),
+          matchRow("Okęcie Warszawa", "3-1", "Champion Warszawa", ""),
+        ].join("\n"),
+      ),
+    );
+
+    await t.action(internal.matchesSync.syncAll, { force: true });
+    const [match] = await t.run(async (ctx) =>
+      ctx.db.query("matches").collect(),
+    );
+    expect(match.result).toBe("3:1");
+    expect(match.status).toBe("finished");
   });
 
   it("zapisuje błąd źródła, gdy serwis odpowie błędem", async () => {

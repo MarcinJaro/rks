@@ -30,6 +30,22 @@ const matchSource = v.union(
   v.literal("manual"),
 );
 
+// Mecze bez wyznaczonego terminu dostają godzinę 12:00 pierwszego dnia kolejki,
+// a bywają rozgrywane dzień lub kilka dni później. Trzymamy je w terminarzu
+// przez tydzień od tej daty, żeby nie znikały ze strony w dniu meczu.
+const APPROXIMATE_DATE_GRACE = 7 * 24 * 60 * 60 * 1000;
+
+function isStillUpcoming(
+  match: { date: number; dateConfirmed?: boolean },
+  now: number,
+) {
+  const deadline =
+    match.dateConfirmed === false
+      ? match.date + APPROXIMATE_DATE_GRACE
+      : match.date;
+  return deadline >= now;
+}
+
 export const upcoming = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, { limit }) => {
@@ -40,7 +56,7 @@ export const upcoming = query({
       .order("asc")
       .take(limit || 10);
 
-    return matches.filter((match) => match.date >= now);
+    return matches.filter((match) => isStillUpcoming(match, now));
   },
 });
 
@@ -55,7 +71,7 @@ export const homepage = query({
       .take(12);
 
     const nextMatch =
-      upcomingMatches.find((match) => match.date >= now) ||
+      upcomingMatches.find((match) => isStillUpcoming(match, now)) ||
       upcomingMatches[0] ||
       null;
 
@@ -102,7 +118,9 @@ export const center = query({
           .order("asc")
           .take(upcomingLimit || 8);
 
-    const upcoming = upcomingMatches.filter((match) => match.date >= now);
+    const upcoming = upcomingMatches.filter((match) =>
+      isStillUpcoming(match, now),
+    );
     const nextMatch = upcoming[0] || upcomingMatches[0] || null;
 
     const latestResults = team
@@ -156,6 +174,8 @@ export const upsertFromSource = internalMutation({
     homeTeam: v.string(),
     awayTeam: v.string(),
     date: v.number(),
+    dateConfirmed: v.optional(v.boolean()),
+    roundLabel: v.optional(v.string()),
     venue: v.optional(v.string()),
     result: v.optional(v.string()),
     matchType,
@@ -174,6 +194,8 @@ export const upsertFromSource = internalMutation({
       homeTeam: args.homeTeam,
       awayTeam: args.awayTeam,
       date: args.date,
+      dateConfirmed: args.dateConfirmed,
+      roundLabel: args.roundLabel,
       venue: args.venue,
       result: args.result,
       matchType: args.matchType,

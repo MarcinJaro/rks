@@ -80,9 +80,18 @@ export const triggerSync = action({
   },
 });
 
-function matchStatus(date: number, result?: string) {
+// Mecz bez wyniku z terminem tylko orientacyjnym zostaje w terminarzu,
+// nawet gdy zgadywana data już minęła — inaczej nierozegrane spotkanie
+// wpadłoby między wyniki.
+function matchStatus(date: number, result?: string, dateConfirmed = true) {
   if (result) return "finished" as const;
+  if (!dateConfirmed) return "upcoming" as const;
   return date > Date.now() ? ("upcoming" as const) : ("finished" as const);
+}
+
+function buildRoundLabel(round?: number, dateLabel?: string) {
+  if (!round) return undefined;
+  return dateLabel ? `${round}. kolejka, ${dateLabel}` : `${round}. kolejka`;
 }
 
 async function syncNinetyMinut(ctx: ActionCtx, source: Doc<"syncSources">) {
@@ -117,10 +126,12 @@ async function syncNinetyMinut(ctx: ActionCtx, source: Doc<"syncSources">) {
       homeTeam: match.homeTeam,
       awayTeam: match.awayTeam,
       date: match.date,
+      dateConfirmed: match.dateConfirmed,
+      roundLabel: buildRoundLabel(match.round, match.roundDateLabel),
       venue: match.note,
       result: match.result,
       matchType: source.matchType,
-      status: matchStatus(match.date, match.result),
+      status: matchStatus(match.date, match.result, match.dateConfirmed),
       teamId: source.teamId,
     });
   }

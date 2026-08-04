@@ -109,6 +109,11 @@ export default defineSchema({
     homeTeam: v.string(),
     awayTeam: v.string(),
     date: v.number(),
+    // Brak pola znaczy tyle co true — mecze sprzed wprowadzenia terminów
+    // orientacyjnych zawsze miały własną datę.
+    dateConfirmed: v.optional(v.boolean()),
+    // Gotowy opis terminu z terminarza, np. „5. kolejka, 6-7 września".
+    roundLabel: v.optional(v.string()),
     venue: v.optional(v.string()),
     result: v.optional(v.string()),
     source: v.optional(

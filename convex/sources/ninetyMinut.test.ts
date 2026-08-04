@@ -41,6 +41,17 @@ function matchRow(home: string, score: string, away: string, date: string) {
 </tr>`;
 }
 
+// Nagłówek kolejki siedzi na 90minut w osobnej tabeli przeplatanej
+// z tabelami meczów — dla parsera liczy się tylko sam wiersz.
+function roundHeader(label: string) {
+  return `<tr>
+<td colspan="3">
+<img src="http://img.90minut.pl/img/redarrowl.gif" width="15" height="15" align="absmiddle">
+ <b><u>${label}</u></b>
+</td>
+</tr>`;
+}
+
 describe("parseLeagueIdFromUrl", () => {
   it("wyciąga id ligi", () => {
     expect(
@@ -189,6 +200,33 @@ describe("parseNinetyMinutPage — sezon rozegrany", () => {
     );
     expect(match!.homeTeam).toBe("SEMP Ursynów (Warszawa)");
   });
+
+  it("wszystkie mecze mają potwierdzony termin", () => {
+    expect(page.matches.every((m) => m.dateConfirmed)).toBe(true);
+  });
+
+  it("przypisuje każdemu meczowi jego kolejkę", () => {
+    expect(page.matches.every((m) => typeof m.round === "number")).toBe(true);
+    expect(page.matches[0].round).toBe(1);
+    expect(page.matches.at(-1)!.round).toBe(30);
+    // 30 kolejek po 8 meczów.
+    expect(new Set(page.matches.map((m) => m.round)).size).toBe(30);
+    expect(page.matches.filter((m) => m.round === 7)).toHaveLength(8);
+  });
+
+  it("czyta zakres dat z nagłówka kolejki", () => {
+    expect(page.matches[0].roundDateLabel).toBe("9-10 sierpnia");
+    // Kolejka rozegrana w jeden dzień.
+    expect(page.matches.find((m) => m.round === 13)!.roundDateLabel).toBe(
+      "2 listopada",
+    );
+    expect(page.matches.find((m) => m.round === 16)!.roundDateLabel).toBe(
+      "22 kwietnia",
+    );
+    expect(page.matches.find((m) => m.round === 17)!.roundDateLabel).toBe(
+      "14-15 marca",
+    );
+  });
 });
 
 describe("parseNinetyMinutPage — sezon świeży", () => {
@@ -210,10 +248,42 @@ describe("parseNinetyMinutPage — sezon świeży", () => {
     expect(page.table.every((row) => row.position === 1)).toBe(true);
   });
 
-  it("pomija mecze bez wyznaczonego terminu", () => {
-    // Terminarz ma komplet 240 par, ale daty ma na razie tylko pierwsza kolejka.
-    expect(page.matches).toHaveLength(8);
+  it("czyta mecze kolejek z zakresem dat, mimo braku dat przy meczach", () => {
+    // Terminarz ma komplet 240 par; własne daty ma tylko pierwsza kolejka,
+    // ale nagłówki kolejek 1-15 podają zakresy, więc te mecze da się zakotwiczyć.
+    expect(page.matches).toHaveLength(120);
     expect(page.matches.every((m) => Number.isFinite(m.date))).toBe(true);
+  });
+
+  it("oznacza jako potwierdzone tylko mecze z własną datą", () => {
+    const confirmed = page.matches.filter((m) => m.dateConfirmed);
+    expect(confirmed).toHaveLength(8);
+    expect(confirmed.every((m) => m.round === 1)).toBe(true);
+  });
+
+  it("liczy datę meczu bez terminu z pierwszego dnia kolejki", () => {
+    const match = page.matches.find((m) => m.round === 5)!;
+    expect(match.dateConfirmed).toBe(false);
+    expect(match.roundDateLabel).toBe("5-6 września");
+    const date = new Date(match.date);
+    expect(date.getUTCFullYear()).toBe(2026);
+    expect(date.getUTCMonth()).toBe(8);
+    expect(date.getUTCDate()).toBe(5);
+    // 12:00 czasu polskiego (letniego) to 10:00 UTC.
+    expect(date.getUTCHours()).toBe(10);
+  });
+
+  it("czyta kolejkę z jedną datą w nagłówku", () => {
+    const match = page.matches.find((m) => m.round === 13)!;
+    expect(match.roundDateLabel).toBe("31 października");
+    const date = new Date(match.date);
+    expect(date.getUTCMonth()).toBe(9);
+    expect(date.getUTCDate()).toBe(31);
+  });
+
+  it("pomija mecze kolejek bez zakresu dat w nagłówku", () => {
+    // Kolejki 16-30 nie mają jeszcze żadnego terminu — nie ma czego pokazać.
+    expect(page.matches.some((m) => (m.round ?? 0) > 15)).toBe(false);
   });
 });
 
@@ -270,6 +340,114 @@ describe("parseNinetyMinutPage — przypadki brzegowe", () => {
       withRows(matchRow("Okęcie Warszawa", "-", "KS Raszyn", "4 mgliste, 11:00")),
     )!;
     expect(page.matches).toHaveLength(0);
+  });
+});
+
+describe("parseNinetyMinutPage — termin z nagłówka kolejki", () => {
+  function pageWith(header: string, date: string) {
+    return parseNinetyMinutPage(
+      withRows(
+        [
+          roundHeader(header),
+          matchRow("Okęcie Warszawa", "-", "KS Raszyn", date),
+        ].join("\n"),
+      ),
+    )!;
+  }
+
+  it("mecz bez daty dostaje pierwszy dzień zakresu kolejki", () => {
+    const page = pageWith("Kolejka 1 - 8-9 sierpnia", "");
+    expect(page.matches).toHaveLength(1);
+    const match = page.matches[0];
+    expect(match.round).toBe(1);
+    expect(match.roundDateLabel).toBe("8-9 sierpnia");
+    expect(match.dateConfirmed).toBe(false);
+    const date = new Date(match.date);
+    expect(date.getUTCFullYear()).toBe(2025);
+    expect(date.getUTCMonth()).toBe(7);
+    expect(date.getUTCDate()).toBe(8);
+    // 12:00 czasu polskiego (letniego) to 10:00 UTC.
+    expect(date.getUTCHours()).toBe(10);
+  });
+
+  it("czyta nagłówek z jedną datą", () => {
+    const page = pageWith("Kolejka 13 - 2 listopada", "");
+    const match = page.matches[0];
+    expect(match.round).toBe(13);
+    expect(match.roundDateLabel).toBe("2 listopada");
+    const date = new Date(match.date);
+    expect(date.getUTCFullYear()).toBe(2025);
+    expect(date.getUTCMonth()).toBe(10);
+    expect(date.getUTCDate()).toBe(2);
+    // 12:00 czasu polskiego (zimowego) to 11:00 UTC.
+    expect(date.getUTCHours()).toBe(11);
+  });
+
+  it("kolejka wiosenna trafia w drugi rok sezonu", () => {
+    const page = pageWith("Kolejka 17 - 14-15 marca", "");
+    const date = new Date(page.matches[0].date);
+    expect(date.getUTCFullYear()).toBe(2026);
+    expect(date.getUTCMonth()).toBe(2);
+    expect(date.getUTCDate()).toBe(14);
+  });
+
+  it("własna data meczu wygrywa z zakresem kolejki", () => {
+    const page = pageWith("Kolejka 1 - 8-9 sierpnia", "16 września, 19:00");
+    const match = page.matches[0];
+    expect(match.dateConfirmed).toBe(true);
+    expect(match.round).toBe(1);
+    expect(match.roundDateLabel).toBe("8-9 sierpnia");
+    const date = new Date(match.date);
+    expect(date.getUTCMonth()).toBe(8);
+    expect(date.getUTCDate()).toBe(16);
+    expect(date.getUTCHours()).toBe(17);
+  });
+
+  it("pomija mecz bez daty w kolejce bez zakresu", () => {
+    expect(pageWith("Kolejka 16", "").matches).toHaveLength(0);
+  });
+
+  it("nie zgaduje terminu przy nietypowym zakresie", () => {
+    expect(pageWith("Kolejka 5 - termin do ustalenia", "").matches).toHaveLength(
+      0,
+    );
+  });
+
+  it("pomija mecz bez daty spoza kolejek", () => {
+    const page = parseNinetyMinutPage(
+      withRows(matchRow("Okęcie Warszawa", "-", "KS Raszyn", "")),
+    )!;
+    expect(page.matches).toHaveLength(0);
+  });
+
+  it("nie miesza kolejek przy kilku nagłówkach", () => {
+    const page = parseNinetyMinutPage(
+      withRows(
+        [
+          roundHeader("Kolejka 1 - 8-9 sierpnia"),
+          matchRow("Okęcie Warszawa", "-", "KS Raszyn", ""),
+          roundHeader("Kolejka 2 - 15-16 sierpnia"),
+          matchRow("KS Raszyn", "-", "Okęcie Warszawa", ""),
+        ].join("\n"),
+      ),
+    )!;
+    expect(page.matches).toHaveLength(2);
+    expect(page.matches.map((m) => m.round)).toEqual([1, 2]);
+    expect(new Date(page.matches[1].date).getUTCDate()).toBe(15);
+  });
+
+  it("nie dopina notatki z poprzedniej kolejki", () => {
+    const page = parseNinetyMinutPage(
+      withRows(
+        [
+          roundHeader("Kolejka 1 - 8-9 sierpnia"),
+          matchRow("Okęcie Warszawa", "-", "KS Raszyn", ""),
+          roundHeader("Kolejka 2 - 15-16 sierpnia"),
+          '<tr align="left"><td colspan="4"><i>terminarz w trakcie ustalania</i></td></tr>',
+        ].join("\n"),
+      ),
+    )!;
+    expect(page.matches[0].note).toBeUndefined();
   });
 });
 
