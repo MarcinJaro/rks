@@ -17,6 +17,43 @@ export const list = query({
   },
 });
 
+// Zakładki centrum meczowego: aktywne drużyny, które mają jakiekolwiek dane —
+// skonfigurowane źródło synchronizacji albo choć jeden mecz w bazie (roczniki
+// dziecięce wpisywane ręcznie w adminie).
+export const matchCenterList = query({
+  args: {},
+  handler: async (ctx) => {
+    const teams = await ctx.db
+      .query("teams")
+      .withIndex("by_sortOrder")
+      .order("asc")
+      .collect();
+
+    const tabs = [];
+    for (const team of teams) {
+      if (!team.isActive) continue;
+
+      const source = await ctx.db
+        .query("syncSources")
+        .withIndex("by_team", (q) => q.eq("teamId", team._id))
+        .first();
+
+      const match = source
+        ? null
+        : await ctx.db
+            .query("matches")
+            .withIndex("by_team", (q) => q.eq("teamId", team._id))
+            .first();
+
+      if (source || match) {
+        tabs.push({ _id: team._id, name: team.name, slug: team.slug });
+      }
+    }
+
+    return tabs;
+  },
+});
+
 export const getBySlug = query({
   args: { slug: v.string() },
   handler: async (ctx, { slug }) => {

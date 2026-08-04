@@ -22,12 +22,34 @@ const matchStatus = v.union(
 );
 
 const matchSource = v.union(
+  v.literal("ninetyminut"),
   v.literal("lnp"),
   v.literal("futbolowo"),
   v.literal("regionalnyfutbol"),
   v.literal("virium"),
   v.literal("manual"),
 );
+
+// Mecze bez wyznaczonego terminu dostają godzinę 12:00 pierwszego dnia kolejki,
+// a bywają rozgrywane dzień lub kilka dni później. Trzymamy je w terminarzu
+// przez tydzień od tej daty, żeby nie znikały ze strony w dniu meczu.
+const APPROXIMATE_DATE_GRACE = 7 * 24 * 60 * 60 * 1000;
+
+// Zapas wierszy na mecze z drugiego końca zakresu (rozegrane w oknie
+// tolerancji albo nierozegrane mimo minionego terminu), które odpadną
+// przy filtrowaniu po statusie.
+const SCAN_MARGIN = 20;
+
+function isStillUpcoming(
+  match: { date: number; dateConfirmed?: boolean },
+  now: number,
+) {
+  const deadline =
+    match.dateConfirmed === false
+      ? match.date + APPROXIMATE_DATE_GRACE
+      : match.date;
+  return deadline >= now;
+}
 
 export const upcoming = query({
   args: { limit: v.optional(v.number()) },
@@ -39,7 +61,7 @@ export const upcoming = query({
       .order("asc")
       .take(limit || 10);
 
-    return matches.filter((match) => match.date >= now);
+    return matches.filter((match) => isStillUpcoming(match, now));
   },
 });
 
@@ -54,7 +76,7 @@ export const homepage = query({
       .take(12);
 
     const nextMatch =
-      upcomingMatches.find((match) => match.date >= now) ||
+      upcomingMatches.find((match) => isStillUpcoming(match, now)) ||
       upcomingMatches[0] ||
       null;
 
@@ -87,38 +109,58 @@ export const center = query({
       return { nextMatch: null, upcoming: [], latestResults: [] };
     }
 
+    const upcomingCount = upcomingLimit || 8;
+    const resultsCount = latestLimit || 8;
+
+    // Terminarz drużyny czytamy zakresem po dacie, a nie od początku
+    // istnienia klubu: po pierwszym sezonie 30 najstarszych meczów to same
+    // wyniki i drużyna zostawała bez nadchodzących spotkań. Dolna granica
+    // cofa się o tolerancję terminów orientacyjnych, żeby mecz z kolejki
+    // sprzed kilku dni nie wypadł z zakresu.
     const upcomingMatches = team
       ? (
           await ctx.db
             .query("matches")
-            .withIndex("by_team", (q) => q.eq("teamId", team._id))
+            .withIndex("by_team", (q) =>
+              q
+                .eq("teamId", team._id)
+                .gte("date", now - APPROXIMATE_DATE_GRACE),
+            )
             .order("asc")
-            .take(30)
-        ).filter((match) => match.status === "upcoming")
+            .take(upcomingCount + SCAN_MARGIN)
+        )
+          .filter((match) => match.status === "upcoming")
+          .slice(0, upcomingCount)
       : await ctx.db
           .query("matches")
           .withIndex("by_status", (q) => q.eq("status", "upcoming"))
           .order("asc")
-          .take(upcomingLimit || 8);
+          .take(upcomingCount);
 
-    const upcoming = upcomingMatches.filter((match) => match.date >= now);
+    const upcoming = upcomingMatches.filter((match) =>
+      isStillUpcoming(match, now),
+    );
     const nextMatch = upcoming[0] || upcomingMatches[0] || null;
 
+    // Symetrycznie dla wyników: bez górnej granicy pełny terminarz przyszłych
+    // kolejek wypychał rozegrane mecze poza okno odczytu.
     const latestResults = team
       ? (
           await ctx.db
             .query("matches")
-            .withIndex("by_team", (q) => q.eq("teamId", team._id))
+            .withIndex("by_team", (q) =>
+              q.eq("teamId", team._id).lte("date", now),
+            )
             .order("desc")
-            .take(30)
+            .take(resultsCount + SCAN_MARGIN)
         )
           .filter((match) => match.status === "finished")
-          .slice(0, latestLimit || 8)
+          .slice(0, resultsCount)
       : await ctx.db
           .query("matches")
           .withIndex("by_status", (q) => q.eq("status", "finished"))
           .order("desc")
-          .take(latestLimit || 8);
+          .take(resultsCount);
 
     return { nextMatch, upcoming, latestResults };
   },
@@ -145,50 +187,6 @@ export const getBySourceMatchId = internalQuery({
   },
 });
 
-export const upsertFromLnp = internalMutation({
-  args: {
-    sourceMatchId: v.string(),
-    sourceTeamId: v.optional(v.string()),
-    sourceCompetitionId: v.optional(v.string()),
-    sourceUrl: v.optional(v.string()),
-    homeTeam: v.string(),
-    awayTeam: v.string(),
-    date: v.number(),
-    venue: v.optional(v.string()),
-    result: v.optional(v.string()),
-    matchType,
-    status: matchStatus,
-  },
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("matches")
-      .withIndex("by_sourceMatchId", (q) =>
-        q.eq("sourceMatchId", args.sourceMatchId),
-      )
-      .first();
-
-    const fields = {
-      homeTeam: args.homeTeam,
-      awayTeam: args.awayTeam,
-      date: args.date,
-      venue: args.venue,
-      result: args.result,
-      matchType: args.matchType,
-      status: args.status,
-      source: "lnp" as const,
-      sourceMatchId: args.sourceMatchId,
-      syncedAt: Date.now(),
-    };
-
-    if (existing) {
-      await ctx.db.patch(existing._id, fields);
-      return existing._id;
-    }
-
-    return await ctx.db.insert("matches", fields);
-  },
-});
-
 export const upsertFromSource = internalMutation({
   args: {
     source: matchSource,
@@ -199,11 +197,13 @@ export const upsertFromSource = internalMutation({
     homeTeam: v.string(),
     awayTeam: v.string(),
     date: v.number(),
+    dateConfirmed: v.optional(v.boolean()),
+    roundLabel: v.optional(v.string()),
     venue: v.optional(v.string()),
     result: v.optional(v.string()),
     matchType,
     status: matchStatus,
-    teamSlug: v.optional(v.string()),
+    teamId: v.optional(v.id("teams")),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -213,17 +213,12 @@ export const upsertFromSource = internalMutation({
       )
       .first();
 
-    const team = args.teamSlug
-      ? await ctx.db
-          .query("teams")
-          .withIndex("by_slug", (q) => q.eq("slug", args.teamSlug!))
-          .first()
-      : null;
-
     const fields = {
       homeTeam: args.homeTeam,
       awayTeam: args.awayTeam,
       date: args.date,
+      dateConfirmed: args.dateConfirmed,
+      roundLabel: args.roundLabel,
       venue: args.venue,
       result: args.result,
       matchType: args.matchType,
@@ -233,7 +228,7 @@ export const upsertFromSource = internalMutation({
       sourceTeamId: args.sourceTeamId,
       sourceCompetitionId: args.sourceCompetitionId,
       sourceUrl: args.sourceUrl,
-      teamId: team?._id,
+      teamId: args.teamId,
       syncedAt: Date.now(),
     };
 
