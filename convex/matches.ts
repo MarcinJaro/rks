@@ -22,6 +22,7 @@ const matchStatus = v.union(
 );
 
 const matchSource = v.union(
+  v.literal("ninetyminut"),
   v.literal("lnp"),
   v.literal("futbolowo"),
   v.literal("regionalnyfutbol"),
@@ -145,50 +146,6 @@ export const getBySourceMatchId = internalQuery({
   },
 });
 
-export const upsertFromLnp = internalMutation({
-  args: {
-    sourceMatchId: v.string(),
-    sourceTeamId: v.optional(v.string()),
-    sourceCompetitionId: v.optional(v.string()),
-    sourceUrl: v.optional(v.string()),
-    homeTeam: v.string(),
-    awayTeam: v.string(),
-    date: v.number(),
-    venue: v.optional(v.string()),
-    result: v.optional(v.string()),
-    matchType,
-    status: matchStatus,
-  },
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("matches")
-      .withIndex("by_sourceMatchId", (q) =>
-        q.eq("sourceMatchId", args.sourceMatchId),
-      )
-      .first();
-
-    const fields = {
-      homeTeam: args.homeTeam,
-      awayTeam: args.awayTeam,
-      date: args.date,
-      venue: args.venue,
-      result: args.result,
-      matchType: args.matchType,
-      status: args.status,
-      source: "lnp" as const,
-      sourceMatchId: args.sourceMatchId,
-      syncedAt: Date.now(),
-    };
-
-    if (existing) {
-      await ctx.db.patch(existing._id, fields);
-      return existing._id;
-    }
-
-    return await ctx.db.insert("matches", fields);
-  },
-});
-
 export const upsertFromSource = internalMutation({
   args: {
     source: matchSource,
@@ -203,7 +160,7 @@ export const upsertFromSource = internalMutation({
     result: v.optional(v.string()),
     matchType,
     status: matchStatus,
-    teamSlug: v.optional(v.string()),
+    teamId: v.optional(v.id("teams")),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -212,13 +169,6 @@ export const upsertFromSource = internalMutation({
         q.eq("sourceMatchId", args.sourceMatchId),
       )
       .first();
-
-    const team = args.teamSlug
-      ? await ctx.db
-          .query("teams")
-          .withIndex("by_slug", (q) => q.eq("slug", args.teamSlug!))
-          .first()
-      : null;
 
     const fields = {
       homeTeam: args.homeTeam,
@@ -233,7 +183,7 @@ export const upsertFromSource = internalMutation({
       sourceTeamId: args.sourceTeamId,
       sourceCompetitionId: args.sourceCompetitionId,
       sourceUrl: args.sourceUrl,
-      teamId: team?._id,
+      teamId: args.teamId,
       syncedAt: Date.now(),
     };
 
