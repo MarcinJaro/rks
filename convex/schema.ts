@@ -113,6 +113,7 @@ export default defineSchema({
     result: v.optional(v.string()),
     source: v.optional(
       v.union(
+        v.literal("ninetyminut"),
         v.literal("manual"),
         v.literal("lnp"),
         v.literal("futbolowo"),
@@ -164,6 +165,52 @@ export default defineSchema({
   })
     .index("by_match", ["matchId"])
     .index("by_sourceEventId", ["sourceEventId"]),
+
+  syncSources: defineTable({
+    teamId: v.id("teams"),
+    kind: v.union(v.literal("ninetyminut"), v.literal("virium")),
+    url: v.string(),
+    externalId: v.string(),
+    teamNameOnSource: v.string(),
+    matchType: v.union(
+      v.literal("liga"),
+      v.literal("sparing"),
+      v.literal("turniej"),
+      v.literal("puchar"),
+    ),
+    enabled: v.boolean(),
+    lastSyncedAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+  }).index("by_team", ["teamId"]),
+
+  standings: defineTable({
+    teamId: v.id("teams"),
+    competitionName: v.string(),
+    season: v.string(),
+    rows: v.array(
+      v.object({
+        position: v.number(),
+        name: v.string(),
+        played: v.number(),
+        points: v.number(),
+        wins: v.number(),
+        draws: v.number(),
+        losses: v.number(),
+        goalsFor: v.number(),
+        goalsAgainst: v.number(),
+        isRks: v.boolean(),
+      }),
+    ),
+    syncedAt: v.number(),
+    sourceUrl: v.optional(v.string()),
+  }).index("by_team", ["teamId"]),
+
+  appSettings: defineTable({
+    key: v.string(),
+    boolValue: v.optional(v.boolean()),
+    stringValue: v.optional(v.string()),
+    numberValue: v.optional(v.number()),
+  }).index("by_key", ["key"]),
 
   liveStreams: defineTable({
     title: v.string(),
