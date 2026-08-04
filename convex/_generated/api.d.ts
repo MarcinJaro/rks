@@ -28,10 +28,12 @@ import type * as seed from "../seed.js";
 import type * as settings from "../settings.js";
 import type * as slugify from "../slugify.js";
 import type * as sources_encoding from "../sources/encoding.js";
+import type * as sources_ninetyMinut from "../sources/ninetyMinut.js";
 import type * as sources_polishTime from "../sources/polishTime.js";
 import type * as sources_virium from "../sources/virium.js";
 import type * as sponsors from "../sponsors.js";
 import type * as standings from "../standings.js";
+import type * as syncSources from "../syncSources.js";
 import type * as teams from "../teams.js";
 
 import type {
@@ -61,10 +63,12 @@ declare const fullApi: ApiFromModules<{
   settings: typeof settings;
   slugify: typeof slugify;
   "sources/encoding": typeof sources_encoding;
+  "sources/ninetyMinut": typeof sources_ninetyMinut;
   "sources/polishTime": typeof sources_polishTime;
   "sources/virium": typeof sources_virium;
   sponsors: typeof sponsors;
   standings: typeof standings;
+  syncSources: typeof syncSources;
   teams: typeof teams;
 }>;
 
