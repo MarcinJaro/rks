@@ -7,15 +7,7 @@ import { teams } from "@/data/site";
 
 const featuredSlugs = ["seniorzy", "rocznik-2010", "rocznik-2014"];
 
-const teamPosterOverrides: Record<string, string> = {
-  seniorzy: "/images/teams/seniorzy.png",
-  seniorzy2: "/images/teams/seniorzy2.png",
-  "rocznik-2010": "/images/teams/rocznik-2010.png",
-  "rocznik-2012": "/images/teams/rocznik-2012.png",
-  "rocznik-2013": "/images/teams/rocznik-2013.png",
-  "rocznik-2014": "/images/teams/rocznik-2014.png",
-  "rocznik-2020": "/images/teams/rocznik-2020.png",
-};
+const teamPosterOverrides: Record<string, string> = {};
 
 export function TeamsGrid({
   variant = "featured",
