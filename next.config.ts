@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { buildLegacyRedirects } from "./src/data/legacy-redirects";
 
 const nextConfig: NextConfig = {
   images: {
@@ -42,9 +43,13 @@ const nextConfig: NextConfig = {
       },
       { source: "/dla-rodzicow", destination: "/rodzice", permanent: true },
       { source: "/reklama", destination: "/wspieraj", permanent: true },
+      { source: "/niw-crso", destination: "/klub/niw-crso", permanent: true },
+      { source: "/strona-glowna", destination: "/", permanent: true },
+      { source: "/archiwum", destination: "/aktualnosci", permanent: true },
+      { source: "/szatnie", destination: "/klub/stadion", permanent: true },
       {
-        source: "/przekaz-15-podatku-na-rozwoj-rks-okecie-warszawa-krs-0000021958",
-        destination: "/wspieraj",
+        source: "/polityka-plikow-cookies",
+        destination: "/polityka-prywatnosci",
         permanent: true,
       },
       {
@@ -62,6 +67,25 @@ const nextConfig: NextConfig = {
         destination: "/kibice/historia",
         permanent: true,
       },
+      {
+        source: "/strefa-kibica/kalendarz-sportowy",
+        destination: "/wyniki",
+        permanent: true,
+      },
+      {
+        source: "/strefa-kibica/historia-ruchu-kibicowskiego",
+        destination: "/kibice/historia",
+        permanent: true,
+      },
+      { source: "/strefa-kibica", destination: "/kibice", permanent: true },
+      {
+        source: "/strefa-kibica/:path*",
+        destination: "/kibice",
+        permanent: true,
+      },
+      { source: "/sekcja/:path*", destination: "/aktualnosci", permanent: true },
+      { source: "/node/:path*", destination: "/aktualnosci", permanent: true },
+      ...buildLegacyRedirects(),
     ];
   },
 };

@@ -17,6 +17,9 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://rksokecie.pl"),
+  alternates: {
+    canonical: "./",
+  },
   title: {
     default: "RKS Okęcie Warszawa",
     template: "%s | RKS Okęcie Warszawa",

@@ -92,6 +92,17 @@ export function Footer() {
           </div>
         </div>
       </div>
+      <div className="border-t border-white/8">
+        <div className="container-page flex flex-wrap items-center justify-between gap-2 py-4 text-xs text-white/60">
+          <p>© {new Date().getFullYear()} RKS Okęcie Warszawa</p>
+          <Link
+            href="/polityka-prywatnosci"
+            className="font-bold transition hover:text-primary hover:underline"
+          >
+            Polityka prywatności
+          </Link>
+        </div>
+      </div>
     </footer>
   );
 }

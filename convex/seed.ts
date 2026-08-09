@@ -1,4 +1,4 @@
-import { internalMutation } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 
 // Jednorazowy seed danych z dotychczasowych plików statycznych
@@ -163,6 +163,88 @@ export const uploadUrl = internalMutation({
   args: {},
   handler: async (ctx) => {
     return await ctx.storage.generateUploadUrl();
+  },
+});
+
+// Poniższe trzy funkcje obsługują scripts/import-legacy-articles.mjs
+// (migracja artykułów sezonu 2025/26 ze starego Drupala).
+
+export const uploadUrls = internalMutation({
+  args: { count: v.number() },
+  handler: async (ctx, { count }) => {
+    const urls: string[] = [];
+    for (let i = 0; i < Math.min(count, 100); i += 1) {
+      urls.push(await ctx.storage.generateUploadUrl());
+    }
+    return urls;
+  },
+});
+
+export const storageUrls = internalQuery({
+  args: { ids: v.array(v.id("_storage")) },
+  handler: async (ctx, { ids }) => {
+    return await Promise.all(ids.map((id) => ctx.storage.getUrl(id)));
+  },
+});
+
+export const existingArticleSlugs = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const articles = await ctx.db.query("articles").collect();
+    return articles.map((article) => article.slug);
+  },
+});
+
+export const seedArticles = internalMutation({
+  args: {
+    items: v.array(
+      v.object({
+        title: v.string(),
+        slug: v.string(),
+        content: v.string(),
+        contentHtml: v.string(),
+        excerpt: v.optional(v.string()),
+        publishedAt: v.number(),
+        teamSlug: v.optional(v.string()),
+        imageStorageId: v.optional(v.id("_storage")),
+        galleryIds: v.optional(v.array(v.id("_storage"))),
+      }),
+    ),
+  },
+  handler: async (ctx, { items }) => {
+    const result = { inserted: 0, skipped: 0, slugConflicts: [] as string[] };
+    for (const { teamSlug, ...item } of items) {
+      const existing = await ctx.db
+        .query("articles")
+        .withIndex("by_slug", (q) => q.eq("slug", item.slug))
+        .first();
+      // fbPosts i artykuły dzielą przestrzeń slugów w feed.getPostBySlug —
+      // post FB o tym samym slugu przysłoniłby artykuł.
+      const fbClash = await ctx.db
+        .query("fbPosts")
+        .withIndex("by_slug", (q) => q.eq("slug", item.slug))
+        .first();
+      if (existing || fbClash) {
+        if (item.imageStorageId) await ctx.storage.delete(item.imageStorageId);
+        for (const id of item.galleryIds ?? []) await ctx.storage.delete(id);
+        result.skipped += 1;
+        if (fbClash && !existing) result.slugConflicts.push(item.slug);
+        continue;
+      }
+      const team = teamSlug
+        ? await ctx.db
+            .query("teams")
+            .withIndex("by_slug", (q) => q.eq("slug", teamSlug))
+            .first()
+        : null;
+      await ctx.db.insert("articles", {
+        ...item,
+        teamId: team?._id,
+        status: "published",
+      });
+      result.inserted += 1;
+    }
+    return result;
   },
 });
 

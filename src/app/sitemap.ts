@@ -23,6 +23,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/kontakt",
     "/wyniki",
     "/galeria",
+    "/polityka-prywatnosci",
   ];
 
   return [
