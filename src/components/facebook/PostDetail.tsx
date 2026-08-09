@@ -7,6 +7,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { formatDate } from "@/lib/utils";
 import { buildFeedTitle, removeEmoji } from "@/lib/feedText";
+import { getVideoEmbed } from "@/lib/videoEmbed";
 
 export function PostDetail({ slug }: { slug: string }) {
   if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
@@ -42,6 +43,10 @@ function LiveDetail({ slug }: { slug: string }) {
     (url): url is string => Boolean(url) && url !== heroUrl,
   );
   const isLocal = (url: string) => url.startsWith("http://127.0.0.1");
+  const embed =
+    post.postType === "video" && post.videoUrl
+      ? getVideoEmbed(post.videoUrl)
+      : null;
 
   return (
     <article className="container-page py-12">
@@ -66,7 +71,21 @@ function LiveDetail({ slug }: { slug: string }) {
         </h1>
       </header>
 
-      {heroUrl ? (
+      {embed ? (
+        <div
+          className={`relative mx-auto mt-8 overflow-hidden rounded-lg border border-white/8 bg-black ${
+            embed.portrait ? "aspect-[9/16] max-w-md" : "aspect-video max-w-4xl"
+          }`}
+        >
+          <iframe
+            src={embed.src}
+            title={title}
+            allow="autoplay; encrypted-media; picture-in-picture; web-share"
+            allowFullScreen
+            className="absolute inset-0 h-full w-full border-0"
+          />
+        </div>
+      ) : heroUrl ? (
         <div className="relative mx-auto mt-8 aspect-[16/9] max-w-4xl overflow-hidden rounded-lg border border-white/8 bg-[var(--feed-media)]">
           <Image
             src={heroUrl}
