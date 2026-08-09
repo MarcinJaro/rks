@@ -9,7 +9,7 @@ import { buildFeedTitle } from "@/lib/feedText";
 
 type FeedSource = "all" | "facebook" | "cms";
 
-type ConvexFeedItem = {
+export type ConvexFeedItem = {
   _id?: string;
   source: "facebook" | "cms";
   title?: string;
@@ -104,7 +104,7 @@ function StaticFeedGrid({
   );
 }
 
-function FeedGrid({
+export function FeedGrid({
   posts,
   className,
   featured,
@@ -145,7 +145,7 @@ function FeedGrid({
   );
 }
 
-function normalizeFeedItem(
+export function normalizeFeedItem(
   item: ConvexFeedItem,
   index: number,
 ): FeedItemProps {

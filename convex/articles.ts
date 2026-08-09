@@ -43,11 +43,22 @@ export const saveDraft = mutation({
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .first();
 
+    // Published articles need a publish date: the news feed orders and
+    // paginates by publishedAt.
+    const doc = { ...args };
+    if (
+      doc.status === "published" &&
+      doc.publishedAt === undefined &&
+      existing?.publishedAt === undefined
+    ) {
+      doc.publishedAt = Date.now();
+    }
+
     if (existing) {
-      await ctx.db.patch(existing._id, args);
+      await ctx.db.patch(existing._id, doc);
       return existing._id;
     }
 
-    return await ctx.db.insert("articles", args);
+    return await ctx.db.insert("articles", doc);
   },
 });
