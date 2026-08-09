@@ -12,13 +12,25 @@ export default function StaffPage() {
       <section className="container-page grid gap-5 py-12 sm:grid-cols-2 lg:grid-cols-3">
         {coaches.map((coach) => (
           <article key={coach.name} className="overflow-hidden rounded-[24px] border border-white/8 bg-card">
-            <Image
-              src={coach.photo}
-              alt={coach.name}
-              width={600}
-              height={800}
-              className="aspect-[3/4] w-full object-cover"
-            />
+            {coach.photo ? (
+              <Image
+                src={coach.photo}
+                alt={coach.name}
+                width={600}
+                height={800}
+                className="aspect-[3/4] w-full object-cover"
+              />
+            ) : (
+              <div
+                aria-hidden
+                className="grid aspect-[3/4] w-full place-items-center bg-[var(--surface-raised)] text-6xl font-black text-muted-foreground/60"
+              >
+                {coach.name
+                  .split(" ")
+                  .map((part) => part[0])
+                  .join("")}
+              </div>
+            )}
             <div className="p-6">
               <h2 className="text-2xl font-black text-white">{coach.name}</h2>
               <p className="mt-2 text-sm font-bold text-primary">{coach.team}</p>

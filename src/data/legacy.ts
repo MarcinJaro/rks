@@ -39,7 +39,41 @@ export const boardMembers = [
   ["Artur Mościcki", "Członek Zarządu", "a.moscicki@rksokecie.pl"],
 ];
 
-export const coaches = [
+export const coaches: {
+  name: string;
+  team: string;
+  phone: string;
+  email: string;
+  photo: string | null;
+}[] = [
+  {
+    name: "Piotr Pernal",
+    team: "Seniorzy - Liga okręgowa",
+    phone: "",
+    email: "",
+    photo: null,
+  },
+  {
+    name: "Karol Kuza",
+    team: "Seniorzy / Rocznik 2013 / Rocznik 2014",
+    phone: "731 055 549",
+    email: "",
+    photo: null,
+  },
+  {
+    name: "Grzegorz Malinowski",
+    team: "Seniorzy - Liga okręgowa",
+    phone: "",
+    email: "",
+    photo: null,
+  },
+  {
+    name: "Tomasz Pęśko",
+    team: "Seniorzy II - B klasa / Rocznik 2018 / Rocznik 2020 i młodsi",
+    phone: "512 041 379",
+    email: "t.pesko@rksokecie.pl",
+    photo: "/images/legacy/coach-tomasz-pesko.jpg",
+  },
   {
     name: "Piotr Łuczyk",
     team: "Rocznik 2010",
@@ -48,11 +82,11 @@ export const coaches = [
     photo: "/images/legacy/coach-piotr-luczyk.jpg",
   },
   {
-    name: "Mariusz Wiśniewski",
-    team: "Rocznik 2016",
-    phone: "500 214 641",
-    email: "m.wisniewski@rksokecie.pl",
-    photo: "/images/legacy/coach-mariusz-wisniewski.jpg",
+    name: "Mateusz Łuczyk",
+    team: "Rocznik 2010",
+    phone: "",
+    email: "",
+    photo: null,
   },
   {
     name: "Artur Bartosiński",
@@ -62,6 +96,13 @@ export const coaches = [
     photo: "/images/legacy/coach-artur-bartosinski.jpg",
   },
   {
+    name: "Mikołaj Nowocień",
+    team: "Rocznik 2012",
+    phone: "785 573 777",
+    email: "",
+    photo: null,
+  },
+  {
     name: "Maciej Kilman",
     team: "Rocznik 2013 / Rocznik 2014",
     phone: "668 149 853",
@@ -69,35 +110,74 @@ export const coaches = [
     photo: "/images/legacy/coach-maciej-kilman.jpg",
   },
   {
+    name: "Karol Niziołek",
+    team: "Rocznik 2015 / Rocznik 2019",
+    phone: "793 746 625",
+    email: "",
+    photo: null,
+  },
+  {
     name: "Adam Warszawski",
-    team: "Seniorzy - Liga okręgowa",
+    team: "Rocznik 2015 / Rocznik 2018",
     phone: "690 007 397",
     email: "",
     photo: "/images/legacy/coach-adam-warszawski.jpg",
   },
   {
-    name: "Tomasz Pęśko",
-    team: "Rocznik 2018 / 2019 / 2020",
-    phone: "512 041 379",
-    email: "t.pesko@rksokecie.pl",
-    photo: "/images/legacy/coach-tomasz-pesko.jpg",
+    name: "Dominik Nałęcz",
+    team: "Rocznik 2015 / Rocznik 2019",
+    phone: "",
+    email: "",
+    photo: null,
+  },
+  {
+    name: "Mariusz Wiśniewski",
+    team: "Rocznik 2016",
+    phone: "500 214 641",
+    email: "m.wisniewski@rksokecie.pl",
+    photo: "/images/legacy/coach-mariusz-wisniewski.jpg",
+  },
+  {
+    name: "Bartosz Teichman",
+    team: "Rocznik 2016",
+    phone: "",
+    email: "",
+    photo: null,
+  },
+  {
+    name: "Pavlo Pytko",
+    team: "Rocznik 2017",
+    phone: "733 899 646",
+    email: "",
+    photo: null,
   },
 ];
 
 export const parentContacts = [
-  ["2010", "Piotr Łuczyk", "602 257 707"],
+  ["2010", "Piotr Łuczyk / Mateusz Łuczyk", "602 257 707"],
   ["2012", "Artur Bartosiński / Mikołaj Nowocień", "519 685 935 / 785 573 777"],
   ["2013", "Maciej Kilman / Karol Kuza", "668 149 853 / 731 055 549"],
   ["2014", "Maciej Kilman / Karol Kuza", "668 149 853 / 731 055 549"],
-  ["2015", "Karol Niziołek", "793 746 625"],
-  ["2016", "Mariusz Wiśniewski", "500 214 641"],
+  ["2015", "Karol Niziołek / Adam Warszawski / Dominik Nałęcz", "793 746 625 / 690 007 397"],
+  ["2016", "Mariusz Wiśniewski / Bartosz Teichman", "500 214 641"],
   ["2017", "Pavlo Pytko", "733 899 646"],
-  ["2018/2019/2020", "Tomasz Pęśko", "512 041 379"],
+  ["2018", "Tomasz Pęśko / Adam Warszawski", "512 041 379 / 690 007 397"],
+  ["2019", "Dominik Nałęcz / Karol Niziołek", "793 746 625"],
+  ["2020 i młodsi", "Tomasz Pęśko", "512 041 379"],
 ];
 
 export const teamContacts: Record<string, { coach: string; phone: string; email?: string }> = {
+  seniorzy: {
+    coach: "Piotr Pernal / Karol Kuza / Grzegorz Malinowski",
+    phone: "731 055 549",
+  },
+  seniorzy2: {
+    coach: "Tomasz Pęśko",
+    phone: "512 041 379",
+    email: "t.pesko@rksokecie.pl",
+  },
   "rocznik-2010": {
-    coach: "Piotr Łuczyk",
+    coach: "Piotr Łuczyk / Mateusz Łuczyk",
     phone: "602 257 707",
     email: "p.luczyk@rksokecie.pl",
   },
@@ -117,11 +197,11 @@ export const teamContacts: Record<string, { coach: string; phone: string; email?
     email: "m.kilman@rksokecie.pl",
   },
   "rocznik-2015": {
-    coach: "Karol Niziołek",
-    phone: "793 746 625",
+    coach: "Karol Niziołek / Adam Warszawski / Dominik Nałęcz",
+    phone: "793 746 625 / 690 007 397",
   },
   "rocznik-2016": {
-    coach: "Mariusz Wiśniewski",
+    coach: "Mariusz Wiśniewski / Bartosz Teichman",
     phone: "500 214 641",
     email: "m.wisniewski@rksokecie.pl",
   },
@@ -130,14 +210,13 @@ export const teamContacts: Record<string, { coach: string; phone: string; email?
     phone: "733 899 646",
   },
   "rocznik-2018": {
-    coach: "Tomasz Pęśko",
-    phone: "512 041 379",
+    coach: "Tomasz Pęśko / Adam Warszawski",
+    phone: "512 041 379 / 690 007 397",
     email: "t.pesko@rksokecie.pl",
   },
   "rocznik-2019": {
-    coach: "Tomasz Pęśko",
-    phone: "512 041 379",
-    email: "t.pesko@rksokecie.pl",
+    coach: "Dominik Nałęcz / Karol Niziołek",
+    phone: "793 746 625",
   },
   "rocznik-2020": {
     coach: "Tomasz Pęśko",
