@@ -4,7 +4,7 @@ import { Camera, Mail, Phone, Shield, UserRound, UsersRound } from "lucide-react
 import { PageHeader } from "@/components/shared/PageHeader";
 import { fallbackPosts, teams } from "@/data/site";
 import { FeedItem } from "@/components/facebook/FeedItem";
-import { getLegacyRoster, type RosterPerson } from "@/lib/legacyRoster";
+import { getTeamRoster, type RosterPerson } from "@/data/roster";
 import { teamContacts } from "@/data/legacy";
 
 export function generateStaticParams() {
@@ -21,7 +21,7 @@ export default async function TeamPage({
 
   if (!team) notFound();
 
-  const roster = await getLegacyRoster(team.slug);
+  const roster = getTeamRoster(team.slug);
   const teamContact = teamContacts[team.slug];
   const photoCount =
     roster?.players.filter((player) => Boolean(player.photoUrl)).length ?? 0;

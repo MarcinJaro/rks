@@ -65,7 +65,7 @@ export const coaches: {
     team: "Seniorzy - Liga okręgowa",
     phone: "",
     email: "",
-    photo: null,
+    photo: "/images/coaches/coach-grzegorz-malinowski.webp",
   },
   {
     name: "Tomasz Pęśko",
@@ -86,7 +86,7 @@ export const coaches: {
     team: "Rocznik 2010",
     phone: "",
     email: "",
-    photo: null,
+    photo: "/images/coaches/coach-mateusz-luczyk.webp",
   },
   {
     name: "Artur Bartosiński",
@@ -100,7 +100,7 @@ export const coaches: {
     team: "Rocznik 2012",
     phone: "785 573 777",
     email: "",
-    photo: null,
+    photo: "/images/coaches/coach-mikolaj-nowocien.webp",
   },
   {
     name: "Maciej Kilman",
@@ -150,6 +150,13 @@ export const coaches: {
     phone: "733 899 646",
     email: "",
     photo: null,
+  },
+  {
+    name: "Ryszard Bakal",
+    team: "Oldboy / Weterani",
+    phone: "",
+    email: "",
+    photo: "/images/coaches/coach-ryszard-bakal.webp",
   },
 ];
 
