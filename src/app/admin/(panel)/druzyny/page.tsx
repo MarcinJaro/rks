@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Feedback, inputClass } from "@/components/admin/fields";
 import { FileUpload } from "@/components/admin/FileUpload";
 import { TeamSources } from "./TeamSources";
+import { errorMessage } from "@/lib/convexError";
 
 type FormState = {
   name: string;
@@ -40,16 +41,55 @@ export default function AdminTeamsPage() {
   const removeTeam = useMutation(api.teams.removeTeam);
   const reorder = useMutation(api.teams.reorder);
 
+  const removeUpload = useMutation(api.files.removeUpload);
+
   const [editingId, setEditingId] = useState<Id<"teams"> | "new" | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
+  const [photoRemoved, setPhotoRemoved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function handleSave() {
+  // Sprząta wyłącznie plik wgrany w tej sesji formularza, jeszcze niezapisany.
+  function discardPendingUpload() {
+    if (form.groupPhotoId) {
+      void removeUpload({ storageId: form.groupPhotoId }).catch(() => {});
+    }
+  }
+
+  function handlePhotoUploaded(ids: Id<"_storage">[]) {
+    if (form.groupPhotoId && form.groupPhotoId !== ids[0]) {
+      void removeUpload({ storageId: form.groupPhotoId }).catch(() => {});
+    }
+    set("groupPhotoId", ids[0]);
+    setPhotoRemoved(false);
+  }
+
+  function handleCancel() {
+    discardPendingUpload();
+    setEditingId(null);
+    setForm(emptyForm);
+    setExistingPhotoUrl(null);
+    setPhotoRemoved(false);
+  }
+
+  async function handleReorder(id: Id<"teams">, direction: "up" | "down") {
     setError(null);
+    try {
+      await reorder({ id, direction });
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
+  async function handleSave() {
+    if (busy) return;
+    setError(null);
+    setBusy(true);
     try {
       if (editingId === "new") {
         await createTeam({
@@ -72,21 +112,39 @@ export default function AdminTeamsPage() {
           description: form.description || null,
           isActive: form.isActive,
           coachId: form.coachId ? (form.coachId as Id<"people">) : null,
-          ...(form.groupPhotoId ? { groupPhotoId: form.groupPhotoId } : {}),
+          ...(form.groupPhotoId
+            ? { groupPhotoId: form.groupPhotoId }
+            : photoRemoved
+              ? { groupPhotoId: null }
+              : {}),
         });
       }
       setEditingId(null);
+      setForm(emptyForm);
+      setExistingPhotoUrl(null);
+      setPhotoRemoved(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Coś poszło nie tak");
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
     }
   }
 
   async function handleDelete(id: Id<"teams">) {
-    if (!window.confirm("Usunąć drużynę? Tej operacji nie można cofnąć.")) {
+    if (
+      !window.confirm(
+        "Usunąć drużynę? Razem z nią zostaną usunięte: kadra zawodników ze zdjęciami, źródła synchronizacji, tabele ligowe i mecze wpisane ręcznie. Tej operacji nie można cofnąć.",
+      )
+    ) {
       return;
     }
-    await removeTeam({ id });
-    if (editingId === id) setEditingId(null);
+    setError(null);
+    try {
+      await removeTeam({ id });
+      if (editingId === id) setEditingId(null);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
   }
 
   return (
@@ -174,10 +232,33 @@ export default function AdminTeamsPage() {
               </Field>
             </div>
             <div className="md:col-span-2">
+              {existingPhotoUrl && !photoRemoved && !form.groupPhotoId ? (
+                <div className="mb-3 flex items-center gap-3">
+                  <Image
+                    src={existingPhotoUrl}
+                    alt="Aktualne zdjęcie grupowe"
+                    width={96}
+                    height={64}
+                    className="h-16 w-24 rounded object-cover"
+                  />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setPhotoRemoved(true)}
+                  >
+                    Usuń zdjęcie
+                  </Button>
+                </div>
+              ) : null}
+              {photoRemoved ? (
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Zdjęcie zostanie usunięte przy zapisie.
+                </p>
+              ) : null}
               <FileUpload
                 label="Zdjęcie grupowe (obraz, max 10 MB)"
                 accept="image/*"
-                onUploaded={(ids) => set("groupPhotoId", ids[0])}
+                onUploaded={handlePhotoUploaded}
               />
               {form.groupPhotoId ? (
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -187,10 +268,10 @@ export default function AdminTeamsPage() {
             </div>
           </div>
           <div className="mt-5 flex gap-2">
-            <Button onClick={handleSave} disabled={!form.name}>
-              Zapisz
+            <Button onClick={handleSave} disabled={busy || !form.name}>
+              {busy ? "Zapisywanie…" : "Zapisz"}
             </Button>
-            <Button variant="ghost" onClick={() => setEditingId(null)}>
+            <Button variant="ghost" onClick={handleCancel}>
               Anuluj
             </Button>
           </div>
@@ -212,7 +293,7 @@ export default function AdminTeamsPage() {
                 type="button"
                 aria-label="Przesuń wyżej"
                 disabled={index === 0}
-                onClick={() => reorder({ id: team._id, direction: "up" })}
+                onClick={() => handleReorder(team._id, "up")}
                 className="text-muted-foreground disabled:opacity-30"
               >
                 ▲
@@ -221,7 +302,7 @@ export default function AdminTeamsPage() {
                 type="button"
                 aria-label="Przesuń niżej"
                 disabled={index === (teams?.length ?? 0) - 1}
-                onClick={() => reorder({ id: team._id, direction: "down" })}
+                onClick={() => handleReorder(team._id, "down")}
                 className="text-muted-foreground disabled:opacity-30"
               >
                 ▼
@@ -276,6 +357,8 @@ export default function AdminTeamsPage() {
                     groupPhotoId: "",
                     coachId: team.coachId ?? "",
                   });
+                  setExistingPhotoUrl(team.groupPhotoUrl ?? null);
+                  setPhotoRemoved(false);
                   setEditingId(team._id);
                   setError(null);
                 }}

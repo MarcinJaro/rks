@@ -233,7 +233,7 @@ export const teamContacts: Record<string, { coach: string; phone: string; email?
 };
 
 export const parentRequirements = [
-  "Dostarczenie trenerowi wypełnionej zgody (Zawodnik Naborowy) przed pierwszym treningiem - dotyczy dzieci ur. 2013 i młodszych.",
+  "Dostarczenie trenerowi wypełnionej zgody (Zawodnik Naborowy) przed pierwszym treningiem - dotyczy najmłodszych roczników objętych naborem.",
   "Rejestracja i zgłoszenie dziecka do Akademii RKS Okęcie w systemie Łączy Nas Piłka.",
   "Wypełnienie formularza zgłoszeniowego oraz Deklaracji Gry Amatora.",
   "Dostarczenie aktualnych badań lekarskich dopuszczających do uprawiania sportu.",

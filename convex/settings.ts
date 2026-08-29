@@ -36,3 +36,22 @@ export const set = mutation({
     }
   },
 });
+
+/**
+ * Publiczny odczyt kilku kluczy naraz - strona strojów pobiera cenę,
+ * skład kompletu i adres zamówień jednym zapytaniem.
+ */
+export const getMany = query({
+  args: { keys: v.array(v.string()) },
+  handler: async (ctx, { keys }) => {
+    const result: Record<string, string | null> = {};
+    for (const key of keys) {
+      const setting = await ctx.db
+        .query("settings")
+        .withIndex("by_key", (q) => q.eq("key", key))
+        .first();
+      result[key] = setting?.value ?? null;
+    }
+    return result;
+  },
+});

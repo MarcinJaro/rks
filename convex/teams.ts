@@ -33,10 +33,13 @@ export const matchCenterList = query({
     for (const team of teams) {
       if (!team.isActive) continue;
 
-      const source = await ctx.db
+      const sources = await ctx.db
         .query("syncSources")
         .withIndex("by_team", (q) => q.eq("teamId", team._id))
-        .first();
+        .collect();
+      // Wyłączone źródło nie liczy się jako „drużyna ma dane" - inaczej
+      // w centrum meczowym wisi pusta zakładka.
+      const source = sources.find((item) => item.enabled) ?? null;
 
       const match = source
         ? null
@@ -193,6 +196,8 @@ export const removeTeam = mutation({
     await requireAdmin(ctx);
     const team = await ctx.db.get(id);
     if (!team) return;
+
+    // Trenerzy tylko odpinają się od drużyny (istnieją niezależnie).
     const members = await ctx.db
       .query("people")
       .withIndex("by_team", (q) => q.eq("teamId", id))
@@ -200,6 +205,56 @@ export const removeTeam = mutation({
     for (const person of members) {
       await ctx.db.patch(person._id, { teamId: undefined });
     }
+
+    // Kadra należy do drużyny - kasujemy zawodników razem z ich zdjęciami,
+    // inaczej wizerunki dzieci zostają w storage bez żadnej referencji.
+    const players = await ctx.db
+      .query("players")
+      .withIndex("by_team", (q) => q.eq("teamId", id))
+      .collect();
+    for (const player of players) {
+      if (player.photoStorageId) {
+        await ctx.storage.delete(player.photoStorageId);
+      }
+      await ctx.db.delete(player._id);
+    }
+
+    // Źródła synchronizacji i ich tabele ligowe - bez tego cron co 6 h
+    // odtwarzałby mecze i standings usuniętej drużyny.
+    const sources = await ctx.db
+      .query("syncSources")
+      .withIndex("by_team", (q) => q.eq("teamId", id))
+      .collect();
+    for (const source of sources) {
+      const tables = await ctx.db
+        .query("standings")
+        .withIndex("by_source", (q) => q.eq("sourceId", source._id))
+        .collect();
+      for (const table of tables) await ctx.db.delete(table._id);
+      await ctx.db.delete(source._id);
+    }
+
+    // Standings przypięte bezpośrednio do drużyny (gdyby źródło już nie żyło).
+    const orphanStandings = await ctx.db
+      .query("standings")
+      .withIndex("by_team", (q) => q.eq("teamId", id))
+      .collect();
+    for (const table of orphanStandings) await ctx.db.delete(table._id);
+
+    // Mecze: ręczne kasujemy, zsynchronizowane odpinamy (mogą wrócić z innego
+    // źródła, ale nie mogą wisieć z martwym teamId).
+    const teamMatches = await ctx.db
+      .query("matches")
+      .withIndex("by_team", (q) => q.eq("teamId", id))
+      .collect();
+    for (const match of teamMatches) {
+      if (!match.source || match.source === "manual") {
+        await ctx.db.delete(match._id);
+      } else {
+        await ctx.db.patch(match._id, { teamId: undefined });
+      }
+    }
+
     if (team.groupPhotoId) await ctx.storage.delete(team.groupPhotoId);
     await ctx.db.delete(id);
   },

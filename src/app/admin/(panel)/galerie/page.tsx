@@ -8,6 +8,7 @@ import type { Id } from "../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Field, Feedback, inputClass } from "@/components/admin/fields";
 import { FileUpload } from "@/components/admin/FileUpload";
+import { errorMessage } from "@/lib/convexError";
 
 type FormState = {
   title: string;
@@ -37,16 +38,65 @@ export default function AdminGalleriesPage() {
   const [editingId, setEditingId] = useState<Id<"galleries"> | "new" | null>(
     null,
   );
+  const removeUpload = useMutation(api.files.removeUpload);
+
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  // form.imageIds to wyłącznie zdjęcia wgrane w tej sesji formularza,
+  // jeszcze niezapisane w galerii - tylko takie wolno sprzątnąć przy Anuluj.
+  function handleCancel() {
+    for (const imageId of form.imageIds) {
+      void removeUpload({ storageId: imageId }).catch(() => {});
+    }
+    setEditingId(null);
+    setForm(emptyForm);
+  }
+
+  async function handleRemoveGallery(id: Id<"galleries">) {
+    if (
+      !window.confirm(
+        "Usunąć całą galerię wraz ze zdjęciami? Tej operacji nie można cofnąć.",
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    try {
+      await removeGallery({ id });
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
+  async function handleRemoveImage(id: Id<"galleries">, imageId: Id<"_storage">) {
+    if (!window.confirm("Usunąć to zdjęcie?")) return;
+    setError(null);
+    try {
+      await removeImage({ id, imageId });
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
+  // Prefill pola daty w strefie lokalnej - toISOString() (UTC) cofa datę
+  // o dzień dla timestampów zapisanych przed 2:00 w nocy czasu polskiego.
+  function toDateInputValue(timestamp: number) {
+    const date = new Date(timestamp);
+    const pad = (value: number) => String(value).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  }
+
   async function handleSave() {
+    if (busy) return;
     setError(null);
     const timestamp = form.date ? new Date(form.date).getTime() : Date.now();
+    setBusy(true);
     try {
       if (editingId === "new") {
         await createGallery({
@@ -69,8 +119,11 @@ export default function AdminGalleriesPage() {
         }
       }
       setEditingId(null);
+      setForm(emptyForm);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Coś poszło nie tak");
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -153,12 +206,14 @@ export default function AdminGalleriesPage() {
             <Button
               onClick={handleSave}
               disabled={
-                !form.title || (editingId === "new" && !form.imageIds.length)
+                busy ||
+                !form.title ||
+                (editingId === "new" && !form.imageIds.length)
               }
             >
-              Zapisz
+              {busy ? "Zapisywanie…" : "Zapisz"}
             </Button>
-            <Button variant="ghost" onClick={() => setEditingId(null)}>
+            <Button variant="ghost" onClick={handleCancel}>
               Anuluj
             </Button>
           </div>
@@ -188,7 +243,7 @@ export default function AdminGalleriesPage() {
                   onClick={() => {
                     setForm({
                       title: gallery.title,
-                      date: new Date(gallery.date).toISOString().slice(0, 10),
+                      date: toDateInputValue(gallery.date),
                       description: gallery.description ?? "",
                       teamId: gallery.teamId ?? "",
                       imageIds: [],
@@ -202,15 +257,7 @@ export default function AdminGalleriesPage() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        "Usunąć całą galerię wraz ze zdjęciami? Tej operacji nie można cofnąć.",
-                      )
-                    ) {
-                      removeGallery({ id: gallery._id });
-                    }
-                  }}
+                  onClick={() => handleRemoveGallery(gallery._id)}
                 >
                   Usuń
                 </Button>
@@ -232,11 +279,7 @@ export default function AdminGalleriesPage() {
                     <button
                       type="button"
                       aria-label="Usuń zdjęcie"
-                      onClick={() => {
-                        if (window.confirm("Usunąć to zdjęcie?")) {
-                          removeImage({ id: gallery._id, imageId });
-                        }
-                      }}
+                      onClick={() => handleRemoveImage(gallery._id, imageId)}
                       className="absolute right-1 top-1 hidden rounded bg-black/70 px-1.5 text-xs font-black text-white group-hover:block"
                     >
                       ✕

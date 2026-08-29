@@ -3,7 +3,7 @@ export const navItems = [
   { label: "Drużyny", href: "/druzyny" },
   { label: "Klub", href: "/klub/historia" },
   { label: "Kibice", href: "/kibice" },
-  { label: "Rodzice", href: "/rodzice" },
+  { label: "Zawodnik", href: "/zawodnik" },
   { label: "Wspieraj", href: "/wspieraj" },
   { label: "Kontakt", href: "/kontakt" },
 ];

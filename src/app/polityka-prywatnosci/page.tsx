@@ -34,7 +34,29 @@ const sections: { heading: string; paragraphs: React.ReactNode[] }[] = [
     ],
   },
   {
-    heading: "3. Wizerunek — zdjęcia i transmisje z meczów",
+    heading: "3. Formularz akceptacji regulaminu",
+    paragraphs: [
+      <>
+        Na stronie{" "}
+        <Link
+          href="/zawodnik/regulamin"
+          className="font-bold text-accent underline"
+        >
+          akceptacji regulaminu
+        </Link>{" "}
+        rodzic lub opiekun prawny podaje swoje imię i nazwisko, numer PESEL,
+        adres e-mail, opcjonalnie numer telefonu oraz imię, nazwisko, numer
+        PESEL i rocznik dziecka. Zapisujemy również datę złożenia oświadczenia
+        i wersję dokumentów, których ono dotyczyło. Numery PESEL służą
+        wyłącznie jednoznacznej identyfikacji zawodnika i opiekuna w
+        dokumentacji członkowskiej klubu.
+      </>,
+      "Dane te przetwarzamy wyłącznie po to, aby udokumentować zapoznanie się z Regulaminem Klubu i Polityką ochrony dzieci — na podstawie art. 6 ust. 1 lit. b RODO (czynności związane z uczestnictwem dziecka w zajęciach) oraz art. 6 ust. 1 lit. f RODO (prawnie uzasadniony interes klubu, jakim jest możliwość wykazania złożonych oświadczeń). Nie wykorzystujemy ich do wysyłki marketingowej.",
+      "Oświadczenia przechowujemy przez czas uczestnictwa dziecka w zajęciach klubu oraz przez okres przedawnienia ewentualnych roszczeń, a następnie je usuwamy. Dostęp do nich mają wyłącznie imiennie wskazane osoby z zarządu i biura klubu.",
+    ],
+  },
+  {
+    heading: "4. Wizerunek — zdjęcia i transmisje z meczów",
     paragraphs: [
       "W serwisie publikujemy relacje foto i wideo z meczów, turniejów i innych publicznych wydarzeń klubowych. Wizerunek osób stanowiących element większej całości (drużyna, publiczność, przebieg zawodów) rozpowszechniany jest na podstawie art. 81 ust. 2 ustawy o prawie autorskim i prawach pokrewnych oraz prawnie uzasadnionego interesu klubu, jakim jest dokumentowanie i promocja działalności sportowej (art. 6 ust. 1 lit. f RODO). W przypadku zawodników niepełnoletnich klub odbiera zgody opiekunów w ramach dokumentacji członkowskiej.",
       <>
@@ -48,23 +70,23 @@ const sections: { heading: string; paragraphs: React.ReactNode[] }[] = [
     ],
   },
   {
-    heading: "4. Pliki cookies",
+    heading: "5. Pliki cookies",
     paragraphs: [
       "Strona nie korzysta z cookies marketingowych ani analitycznych i nie profiluje odwiedzających. Wykorzystywane są wyłącznie pliki niezbędne do działania serwisu, w tym cookies uwierzytelniające panel administracyjny (dotyczą wyłącznie administratorów strony, nie odwiedzających).",
       "Osadzone materiały zewnętrzne (np. transmisje i miniatury z serwisu YouTube, treści przeniesione z Facebooka) po przejściu do serwisu zewnętrznego podlegają politykom prywatności ich operatorów (Google/YouTube, Meta).",
     ],
   },
   {
-    heading: "5. Odbiorcy danych",
+    heading: "6. Odbiorcy danych",
     paragraphs: [
       "Dane techniczne przetwarzane są przez dostawców infrastruktury działających na zlecenie klubu: Vercel Inc. (hosting strony), Convex Inc. (baza danych serwisu) oraz Clerk Inc. (logowanie do panelu administracyjnego). Dostawcy ci mogą przetwarzać dane poza Europejskim Obszarem Gospodarczym w oparciu o standardowe klauzule umowne.",
     ],
   },
   {
-    heading: "6. Twoje prawa",
+    heading: "7. Twoje prawa",
     paragraphs: [
       "Masz prawo dostępu do swoich danych, ich sprostowania, usunięcia, ograniczenia przetwarzania oraz wniesienia sprzeciwu wobec przetwarzania opartego na prawnie uzasadnionym interesie. Przysługuje Ci również skarga do Prezesa Urzędu Ochrony Danych Osobowych (uodo.gov.pl).",
-      "Dokument obowiązuje od 10 sierpnia 2026 r. i może być aktualizowany wraz z rozwojem serwisu.",
+      "Dokument obowiązuje od 10 sierpnia 2026 r., ostatnia aktualizacja 25 sierpnia 2026 r. Może być aktualizowany wraz z rozwojem serwisu.",
     ],
   },
 ];

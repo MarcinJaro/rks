@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { ConvexError } from "convex/values";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
+import { errorMessage } from "@/lib/convexError";
 import { youtubeEmbedUrl } from "@/lib/youtube";
 
 const statusLabels: Record<string, string> = {
@@ -37,16 +39,22 @@ export default function AdminLivePage() {
   const [matchId, setMatchId] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  // Wybór meczu dla transmisji utworzonej bez powiązania - bez tego nigdy
+  // nie dałoby się jej zapisać jako archiwum przy meczu.
+  const [linkTargets, setLinkTargets] = useState<Record<string, string>>({});
 
   const previewUrl = youtubeEmbedUrl(youtubeUrl);
 
   async function handleCreate() {
+    if (busy) return;
     setError(null);
     setMessage(null);
     if (!previewUrl) {
       setError("Ten link nie wygląda na poprawny adres YouTube");
       return;
     }
+    setBusy(true);
     try {
       await createStream({
         title,
@@ -58,18 +66,56 @@ export default function AdminLivePage() {
       setMatchId("");
       setMessage("Transmisja dodana — możesz ją rozpocząć poniżej");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Coś poszło nie tak");
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
     }
   }
 
   async function run(action: () => Promise<unknown>, success: string) {
+    if (busy) return;
     setError(null);
     setMessage(null);
+    setBusy(true);
     try {
       await action();
       setMessage(success);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Coś poszło nie tak");
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Mecz może mieć już inny link - backend odmawia bez overwrite, my pytamy
+  // admina i ponawiamy ze świadomym potwierdzeniem.
+  async function handleSaveToMatch(
+    streamId: Id<"liveStreams">,
+    matchId: Id<"matches">,
+  ) {
+    if (busy) return;
+    setError(null);
+    setMessage(null);
+    setBusy(true);
+    try {
+      await saveToMatch({ id: streamId, matchId });
+      setMessage("Link zapisany przy meczu jako archiwum");
+    } catch (err) {
+      if (err instanceof ConvexError) {
+        const question = errorMessage(err);
+        if (window.confirm(question)) {
+          try {
+            await saveToMatch({ id: streamId, matchId, overwrite: true });
+            setMessage("Link zapisany przy meczu (nadpisany)");
+          } catch (retryErr) {
+            setError(errorMessage(retryErr));
+          }
+        }
+      } else {
+        setError(errorMessage(err));
+      }
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -145,7 +191,7 @@ export default function AdminLivePage() {
           ) : null}
           <div>
             <Button onClick={handleCreate} disabled={!title || !previewUrl}>
-              Dodaj transmisję
+              {busy ? "Zapisywanie…" : "Dodaj transmisję"}
             </Button>
           </div>
         </div>
@@ -200,19 +246,48 @@ export default function AdminLivePage() {
                     <Button
                       size="sm"
                       variant="secondary"
+                      disabled={busy}
                       onClick={() =>
-                        run(
-                          () =>
-                            saveToMatch({
-                              id: stream._id,
-                              matchId: stream.matchId!,
-                            }),
-                          "Link zapisany przy meczu jako archiwum",
-                        )
+                        handleSaveToMatch(stream._id, stream.matchId!)
                       }
                     >
                       Zapisz przy meczu
                     </Button>
+                  ) : null}
+                  {!stream.matchId && stream.status === "ended" ? (
+                    <span className="flex items-center gap-2">
+                      <select
+                        value={linkTargets[stream._id] ?? ""}
+                        onChange={(event) =>
+                          setLinkTargets((prev) => ({
+                            ...prev,
+                            [stream._id]: event.target.value,
+                          }))
+                        }
+                        className="rounded-md border border-border bg-background px-2 py-1.5 text-sm font-normal"
+                      >
+                        <option value="">— wybierz mecz —</option>
+                        {matchOptions.map((match) => (
+                          <option key={match._id} value={match._id}>
+                            {match.homeTeam} — {match.awayTeam} (
+                            {formatDate(match.date)})
+                          </option>
+                        ))}
+                      </select>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={busy || !linkTargets[stream._id]}
+                        onClick={() =>
+                          handleSaveToMatch(
+                            stream._id,
+                            linkTargets[stream._id] as Id<"matches">,
+                          )
+                        }
+                      >
+                        Zapisz przy meczu
+                      </Button>
+                    </span>
                   ) : null}
                   <Button
                     size="sm"

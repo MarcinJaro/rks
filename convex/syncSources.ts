@@ -64,6 +64,25 @@ export const add = mutation({
       );
     }
 
+    // Duplikat źródła prowadzi do naprzemiennego nadpisywania meczów - ta sama
+    // liga może istnieć dla dwóch drużyn klubu tylko z różnymi nazwami zespołu.
+    const all = await ctx.db.query("syncSources").collect();
+    for (const source of all) {
+      if (source.kind !== detected.kind || source.externalId !== detected.externalId) {
+        continue;
+      }
+      if (source.teamId === args.teamId) {
+        throw new Error(
+          "Ta drużyna ma już skonfigurowane to źródło. Usuń stare źródło albo zmień jego ustawienia.",
+        );
+      }
+      if (source.teamNameOnSource.trim().toLowerCase() === args.teamNameOnSource.trim().toLowerCase()) {
+        throw new Error(
+          "To źródło z tą samą nazwą drużyny jest już przypisane innej drużynie.",
+        );
+      }
+    }
+
     return await ctx.db.insert("syncSources", {
       teamId: args.teamId,
       kind: detected.kind,
@@ -96,6 +115,13 @@ export const remove = mutation({
   args: { sourceId: v.id("syncSources") },
   handler: async (ctx, { sourceId }) => {
     await requireAdmin(ctx);
+    // Tabela ligowa źródła znika razem z nim - inaczej osierocone standings
+    // dalej wyświetlają się publicznie, a z panelu nie da się ich usunąć.
+    const tables = await ctx.db
+      .query("standings")
+      .withIndex("by_source", (q) => q.eq("sourceId", sourceId))
+      .collect();
+    for (const table of tables) await ctx.db.delete(table._id);
     await ctx.db.delete(sourceId);
   },
 });

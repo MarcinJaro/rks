@@ -4,7 +4,7 @@ import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import { detectSource } from "./syncSources";
 
-const asAdmin = { subject: "admin|1", issuer: "https://example.com" };
+const asAdmin = { subject: "admin|1", issuer: "https://example.com", email: "admin@rksokecie.pl" };
 
 async function seedTeam(t: ReturnType<typeof convexTest>) {
   return await t.run(async (ctx) =>

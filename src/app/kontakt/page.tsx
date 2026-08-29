@@ -5,11 +5,11 @@ import {
   MapPin,
   Palette,
   Phone,
-  UsersRound,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { clubInfo } from "@/data/site";
+import { ContactForm } from "./ContactForm";
 
 const contactPeople = [
   {
@@ -98,45 +98,7 @@ export default function ContactPage() {
           </div>
         </div>
 
-        <form className="rounded-[24px] border border-white/8 bg-card p-6 shadow-sm">
-          <div className="mb-6 rounded-[18px] border border-white/8 bg-muted p-5">
-            <UsersRound className="text-primary" size={24} />
-            <h2 className="mt-3 text-xl font-black text-white">
-              Kogo szukasz?
-            </h2>
-            <div className="mt-4 grid gap-3">
-              {contactPeople.map((person) => (
-                <div key={person.email} className="text-sm text-muted-foreground">
-                  <p className="font-black text-white">{person.label}</p>
-                  <p>{person.name}</p>
-                  <p>
-                    {person.phone} ·{" "}
-                    <a className="text-secondary" href={`mailto:${person.email}`}>
-                      {person.email}
-                    </a>
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="grid gap-2 text-sm font-bold">
-              Imię i nazwisko
-              <input className="h-11 rounded-md border border-border bg-background px-3" />
-            </label>
-            <label className="grid gap-2 text-sm font-bold">
-              Email
-              <input className="h-11 rounded-md border border-border bg-background px-3" type="email" />
-            </label>
-          </div>
-          <label className="mt-4 grid gap-2 text-sm font-bold">
-            Wiadomość
-            <textarea className="min-h-36 rounded-md border border-border bg-background p-3" />
-          </label>
-          <Button className="mt-5" type="submit">
-            Wyślij wiadomość
-          </Button>
-        </form>
+        <ContactForm people={contactPeople} clubEmail={clubInfo.email} />
       </section>
     </>
   );

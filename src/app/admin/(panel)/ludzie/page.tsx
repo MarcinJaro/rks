@@ -8,6 +8,7 @@ import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Field, Feedback, inputClass } from "@/components/admin/fields";
 import { FileUpload } from "@/components/admin/FileUpload";
+import { errorMessage } from "@/lib/convexError";
 
 type PersonRole = Doc<"people">["role"];
 
@@ -45,19 +46,57 @@ export default function AdminPeoplePage() {
   const updatePerson = useMutation(api.people.update);
   const removePerson = useMutation(api.people.removePerson);
   const reorder = useMutation(api.people.reorder);
+  const removeUpload = useMutation(api.files.removeUpload);
 
   const [editingId, setEditingId] = useState<Id<"people"> | "new" | null>(
     null,
   );
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
+  const [photoRemoved, setPhotoRemoved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  // Sprząta wyłącznie plik wgrany w tej sesji formularza i jeszcze niezapisany
+  // w dokumencie - zapisane zdjęcia kasuje backend przy update/remove.
+  function discardPendingUpload() {
+    if (form.photoStorageId) {
+      void removeUpload({ storageId: form.photoStorageId }).catch(() => {});
+    }
+  }
+
+  function handlePhotoUploaded(ids: Id<"_storage">[]) {
+    if (form.photoStorageId && form.photoStorageId !== ids[0]) {
+      void removeUpload({ storageId: form.photoStorageId }).catch(() => {});
+    }
+    set("photoStorageId", ids[0]);
+    setPhotoRemoved(false);
+  }
+
+  function handleRemovePhoto() {
+    if (form.photoStorageId) {
+      void removeUpload({ storageId: form.photoStorageId }).catch(() => {});
+      set("photoStorageId", "");
+    }
+    if (existingPhotoUrl) setPhotoRemoved(true);
+  }
+
+  function handleCancel() {
+    discardPendingUpload();
+    setEditingId(null);
+    setForm(emptyForm);
+    setExistingPhotoUrl(null);
+    setPhotoRemoved(false);
+  }
+
   async function handleSave() {
+    if (busy) return;
     setError(null);
+    setBusy(true);
     try {
       if (editingId === "new") {
         await createPerson({
@@ -80,12 +119,38 @@ export default function AdminPeoplePage() {
           bio: form.bio || null,
           ...(form.photoStorageId
             ? { photoStorageId: form.photoStorageId }
-            : {}),
+            : photoRemoved
+              ? { photoStorageId: null }
+              : {}),
         });
       }
       setEditingId(null);
+      setForm(emptyForm);
+      setExistingPhotoUrl(null);
+      setPhotoRemoved(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Coś poszło nie tak");
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRemove(id: Id<"people">) {
+    setError(null);
+    if (!window.confirm("Usunąć tę osobę?")) return;
+    try {
+      await removePerson({ id });
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
+  async function handleReorder(id: Id<"people">, direction: "up" | "down") {
+    setError(null);
+    try {
+      await reorder({ id, direction });
+    } catch (err) {
+      setError(errorMessage(err));
     }
   }
 
@@ -102,6 +167,8 @@ export default function AdminPeoplePage() {
           onClick={() => {
             setForm(emptyForm);
             setEditingId("new");
+            setExistingPhotoUrl(null);
+            setPhotoRemoved(false);
             setError(null);
           }}
         >
@@ -178,18 +245,37 @@ export default function AdminPeoplePage() {
               </Field>
             </div>
             <div className="md:col-span-2">
+              {existingPhotoUrl && !photoRemoved && !form.photoStorageId ? (
+                <div className="mb-3 flex items-center gap-3">
+                  <Image
+                    src={existingPhotoUrl}
+                    alt="Aktualne zdjęcie"
+                    width={48}
+                    height={48}
+                    className="h-12 w-12 rounded-full object-cover"
+                  />
+                  <Button size="sm" variant="ghost" onClick={handleRemovePhoto}>
+                    Usuń zdjęcie
+                  </Button>
+                </div>
+              ) : null}
+              {photoRemoved ? (
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Zdjęcie zostanie usunięte przy zapisie.
+                </p>
+              ) : null}
               <FileUpload
                 label="Zdjęcie (obraz, max 10 MB)"
                 accept="image/*"
-                onUploaded={(ids) => set("photoStorageId", ids[0])}
+                onUploaded={handlePhotoUploaded}
               />
             </div>
           </div>
           <div className="mt-5 flex gap-2">
-            <Button onClick={handleSave} disabled={!form.name}>
-              Zapisz
+            <Button onClick={handleSave} disabled={busy || !form.name}>
+              {busy ? "Zapisywanie…" : "Zapisz"}
             </Button>
-            <Button variant="ghost" onClick={() => setEditingId(null)}>
+            <Button variant="ghost" onClick={handleCancel}>
               Anuluj
             </Button>
           </div>
@@ -210,9 +296,7 @@ export default function AdminPeoplePage() {
                     type="button"
                     aria-label="Przesuń wyżej"
                     disabled={index === 0}
-                    onClick={() =>
-                      reorder({ id: person._id, direction: "up" })
-                    }
+                    onClick={() => handleReorder(person._id, "up")}
                     className="text-muted-foreground disabled:opacity-30"
                   >
                     ▲
@@ -221,9 +305,7 @@ export default function AdminPeoplePage() {
                     type="button"
                     aria-label="Przesuń niżej"
                     disabled={index === items.length - 1}
-                    onClick={() =>
-                      reorder({ id: person._id, direction: "down" })
-                    }
+                    onClick={() => handleReorder(person._id, "down")}
                     className="text-muted-foreground disabled:opacity-30"
                   >
                     ▼
@@ -267,6 +349,8 @@ export default function AdminPeoplePage() {
                         photoStorageId: "",
                       });
                       setEditingId(person._id);
+                      setExistingPhotoUrl(person.photoUrl ?? null);
+                      setPhotoRemoved(false);
                       setError(null);
                     }}
                   >
@@ -275,11 +359,7 @@ export default function AdminPeoplePage() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => {
-                      if (window.confirm("Usunąć tę osobę?")) {
-                        removePerson({ id: person._id });
-                      }
-                    }}
+                    onClick={() => handleRemove(person._id)}
                   >
                     Usuń
                   </Button>

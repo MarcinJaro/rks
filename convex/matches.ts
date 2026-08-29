@@ -233,7 +233,12 @@ export const upsertFromSource = internalMutation({
     };
 
     if (existing) {
-      await ctx.db.patch(existing._id, fields);
+      // Nie nadpisuj pól, które admin ręcznie poprawił w panelu.
+      const manual = new Set(existing.manualFields ?? []);
+      const safe = Object.fromEntries(
+        Object.entries(fields).filter(([key]) => !manual.has(key)),
+      );
+      await ctx.db.patch(existing._id, safe);
       return existing._id;
     }
 
@@ -303,6 +308,8 @@ export const update = mutation({
     awayTeam: v.optional(v.string()),
     date: v.optional(v.number()),
     venue: v.optional(v.union(v.string(), v.null())),
+    dateConfirmed: v.optional(v.boolean()),
+    roundLabel: v.optional(v.union(v.string(), v.null())),
     matchType: v.optional(matchType),
     status: v.optional(matchStatus),
     teamId: v.optional(v.union(v.id("teams"), v.null())),
@@ -314,12 +321,35 @@ export const update = mutation({
     await requireAdmin(ctx);
     const match = await ctx.db.get(id);
     if (!match) throw new Error("Nie znaleziono meczu");
-    const patch = Object.fromEntries(
+    const patch: Record<string, unknown> = Object.fromEntries(
       Object.entries(fields).map(([key, value]) => [
         key,
         value === null ? undefined : value,
       ]),
     );
+
+    // Zapamiętujemy, które pola zarządzane przez synchronizację admin zmienił
+    // ręcznie - tylko te faktycznie różne od aktualnej wartości. Dzięki temu
+    // kolejny sync ze źródła ich nie nadpisze (upsertFromSource pomija je).
+    if (match.source && match.source !== "manual") {
+      const managed = [
+        "homeTeam",
+        "awayTeam",
+        "date",
+        "dateConfirmed",
+        "roundLabel",
+        "venue",
+        "result",
+        "status",
+        "teamId",
+      ] as const;
+      const manual = new Set(match.manualFields ?? []);
+      for (const key of managed) {
+        if (key in fields && patch[key] !== match[key]) manual.add(key);
+      }
+      patch.manualFields = [...manual];
+    }
+
     await ctx.db.patch(id, patch);
   },
 });

@@ -1,6 +1,6 @@
 // Przekierowania 301 ze starej strony Drupal (rksokecie.pl sprzed migracji).
 // Wygenerowane z sitemap.xml starego serwisu (1610 URL-i, stan: 2026-08-09).
-// Zasada: artykuly-newsy -> /aktualnosci, nabory/obozy -> /rodzice, 1,5% -> /wspieraj,
+// Zasada: artykuly-newsy -> /aktualnosci, nabory/obozy -> /zawodnik, 1,5% -> /wspieraj,
 // sekcje druzynowe -> odpowiednia strona /druzyny/[slug].
 
 type Redirect = { source: string; destination: string; permanent: boolean };
@@ -9,7 +9,6 @@ type Redirect = { source: string; destination: string; permanent: boolean };
 const articleSlugs: string[] = [
   "1-kolejka-ligowa-rks-okecie-warszawa-unia-ii-warszawa",
   "akademickie-mistrzostwa-polski-w-podnoszeniu-ciezarow-4-miejsce-marty-dawidowskiej",
-  "akceptacja-regulaminu",
   "bieg-pamieci-wlochy-44",
   "bilgoraj-2020-r-mlodziezowe-mistrzostwa-polski-do-lat-23-brazowy-medal-marty-dawidowskiej",
   "bukmacher-forbet-wspiera-nasz-klub",
@@ -148,7 +147,7 @@ const articleSlugs: string[] = [
   "zywa-legenda-sekcji-podnoszenia-ciezarow-pan-boguslaw-maliszewski-trener-czlonek-zarzadu-rks-okecie",
 ];
 
-// Nabory, obozy, polkolonie -> /rodzice
+// Nabory, obozy, polkolonie -> /zawodnik
 const recruitmentSlugs: string[] = [
   "formularz-zgloszeniowy-oboz",
   "nabor-do-sekcji-podnoszenie-ciezarow-w-rks-okecie-warszawa",
@@ -298,6 +297,13 @@ export function buildLegacyRedirects(): Redirect[] {
     { source: "/rocznik-:slug", destination: "/druzyny", permanent: true },
   );
 
+  // Stara strona akceptacji regulaminu ma bezpośredni odpowiednik.
+  redirects.push({
+    source: "/akceptacja-regulaminu",
+    destination: "/zawodnik/regulamin",
+    permanent: true,
+  });
+
   for (const slug of articleSlugs) {
     redirects.push({
       source: `/${slug}`,
@@ -308,7 +314,7 @@ export function buildLegacyRedirects(): Redirect[] {
   for (const slug of recruitmentSlugs) {
     redirects.push({
       source: `/${slug}`,
-      destination: "/rodzice",
+      destination: "/zawodnik",
       permanent: true,
     });
   }

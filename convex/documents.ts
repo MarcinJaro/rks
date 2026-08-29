@@ -38,11 +38,19 @@ export const update = mutation({
     id: v.id("documents"),
     title: v.optional(v.string()),
     category: v.optional(v.string()),
+    fileStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, { id, ...fields }) => {
     await requireAdmin(ctx);
     const document = await ctx.db.get(id);
     if (!document) throw new Error("Nie znaleziono dokumentu");
+    // Podmiana pliku: stary PDF znika ze storage.
+    if (
+      fields.fileStorageId &&
+      fields.fileStorageId !== document.fileStorageId
+    ) {
+      await ctx.storage.delete(document.fileStorageId);
+    }
     await ctx.db.patch(id, fields);
   },
 });

@@ -63,7 +63,7 @@ export function TeamsGrid({
 
           <StaggerItem>
             <Link
-              href="/rodzice"
+              href="/zawodnik"
               className="group grid aspect-[286/400] place-items-center rounded-[24px] border border-dashed border-[#434857] bg-[var(--surface-raised)] p-8 text-center transition hover:border-primary"
             >
               <div>

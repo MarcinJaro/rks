@@ -6,6 +6,7 @@ import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
+import { errorMessage } from "@/lib/convexError";
 
 type SyncResults = FunctionReturnType<
   typeof api.matchesSync.triggerSync
@@ -38,6 +39,8 @@ type FormState = {
   result: string;
   veoUrl: string;
   youtubeUrl: string;
+  dateConfirmed: boolean;
+  roundLabel: string;
 };
 
 const emptyForm: FormState = {
@@ -51,6 +54,8 @@ const emptyForm: FormState = {
   result: "",
   veoUrl: "",
   youtubeUrl: "",
+  dateConfirmed: true,
+  roundLabel: "",
 };
 
 function toInputValue(timestamp: number) {
@@ -78,7 +83,11 @@ export default function AdminMatchesPage() {
     null,
   );
   const [form, setForm] = useState<FormState>(emptyForm);
+  // Snapshot z chwili otwarcia edycji - zapis wysyła tylko pola faktycznie
+  // zmienione, żeby nie nadpisać danych dogranych w międzyczasie przez sync.
+  const [snapshot, setSnapshot] = useState<FormState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncResults, setSyncResults] = useState<SyncResults | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -101,12 +110,13 @@ export default function AdminMatchesPage() {
 
   function openNew() {
     setForm(emptyForm);
+    setSnapshot(null);
     setEditingId("new");
     setError(null);
   }
 
   function openEdit(match: Doc<"matches">) {
-    setForm({
+    const state: FormState = {
       homeTeam: match.homeTeam,
       awayTeam: match.awayTeam,
       date: toInputValue(match.date),
@@ -117,18 +127,25 @@ export default function AdminMatchesPage() {
       result: match.result ?? "",
       veoUrl: match.veoUrl ?? "",
       youtubeUrl: match.youtubeUrl ?? "",
-    });
+      // Brak pola = termin potwierdzony (mecze sprzed terminów orientacyjnych).
+      dateConfirmed: match.dateConfirmed !== false,
+      roundLabel: match.roundLabel ?? "",
+    };
+    setForm(state);
+    setSnapshot(state);
     setEditingId(match._id);
     setError(null);
   }
 
   async function handleSave() {
+    if (isSaving) return;
     setError(null);
     const timestamp = new Date(form.date).getTime();
     if (!form.date || Number.isNaN(timestamp)) {
       setError("Podaj poprawną datę meczu");
       return;
     }
+    setIsSaving(true);
     try {
       if (editingId === "new") {
         await createManual({
@@ -141,24 +158,51 @@ export default function AdminMatchesPage() {
           teamId: form.teamId ? (form.teamId as Id<"teams">) : undefined,
           result: form.result || undefined,
         });
-      } else if (editingId) {
+      } else if (editingId && snapshot) {
+        // Diff względem snapshotu: wysyłamy wyłącznie pola zmienione przez
+        // admina. Pole wyczyszczone (było niepuste) idzie jako null.
+        const changed = <T,>(key: keyof FormState, value: T, cleared: T) =>
+          form[key] === snapshot[key] ? {} : form[key] ? value : cleared;
+
         await updateMatch({
           id: editingId,
-          homeTeam: form.homeTeam,
-          awayTeam: form.awayTeam,
-          date: timestamp,
-          venue: form.venue || null,
-          matchType: form.matchType,
-          status: form.status,
-          teamId: form.teamId ? (form.teamId as Id<"teams">) : null,
-          result: form.result || null,
-          veoUrl: form.veoUrl || null,
-          youtubeUrl: form.youtubeUrl || null,
+          ...changed("homeTeam", { homeTeam: form.homeTeam }, {}),
+          ...changed("awayTeam", { awayTeam: form.awayTeam }, {}),
+          ...(form.date !== snapshot.date ? { date: timestamp } : {}),
+          ...changed("venue", { venue: form.venue }, { venue: null }),
+          ...(form.matchType !== snapshot.matchType
+            ? { matchType: form.matchType }
+            : {}),
+          ...(form.status !== snapshot.status ? { status: form.status } : {}),
+          ...changed(
+            "teamId",
+            { teamId: form.teamId as Id<"teams"> },
+            { teamId: null },
+          ),
+          ...changed("result", { result: form.result }, { result: null }),
+          ...changed("veoUrl", { veoUrl: form.veoUrl }, { veoUrl: null }),
+          ...changed(
+            "youtubeUrl",
+            { youtubeUrl: form.youtubeUrl },
+            { youtubeUrl: null },
+          ),
+          ...(form.dateConfirmed !== snapshot.dateConfirmed ||
+          form.date !== snapshot.date
+            ? { dateConfirmed: form.dateConfirmed }
+            : {}),
+          ...changed(
+            "roundLabel",
+            { roundLabel: form.roundLabel },
+            { roundLabel: null },
+          ),
         });
       }
       setEditingId(null);
+      setSnapshot(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Coś poszło nie tak");
+      setError(errorMessage(err));
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -171,7 +215,7 @@ export default function AdminMatchesPage() {
       await removeMatch({ id });
       if (editingId === id) setEditingId(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Coś poszło nie tak");
+      setError(errorMessage(err));
     }
   }
 
@@ -274,9 +318,28 @@ export default function AdminMatchesPage() {
               <input
                 type="datetime-local"
                 value={form.date}
-                onChange={(event) => set("date", event.target.value)}
+                onChange={(event) => {
+                  // Ręczna zmiana daty = admin zna realny termin.
+                  setForm((prev) => ({
+                    ...prev,
+                    date: event.target.value,
+                    dateConfirmed: true,
+                  }));
+                }}
                 className={inputClass}
               />
+              {editingId !== "new" ? (
+                <span className="flex items-center gap-2 text-xs font-normal text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={form.dateConfirmed}
+                    onChange={(event) =>
+                      set("dateConfirmed", event.target.checked)
+                    }
+                  />
+                  Termin potwierdzony (odznacz, jeśli godzina jest orientacyjna)
+                </span>
+              ) : null}
             </label>
             <label className="grid gap-1 text-sm font-bold">
               Miejsce
@@ -345,6 +408,15 @@ export default function AdminMatchesPage() {
             {editingId !== "new" ? (
               <>
                 <label className="grid gap-1 text-sm font-bold">
+                  Opis kolejki (termin orientacyjny)
+                  <input
+                    value={form.roundLabel}
+                    onChange={(event) => set("roundLabel", event.target.value)}
+                    placeholder="5. kolejka, 6-7 września"
+                    className={inputClass}
+                  />
+                </label>
+                <label className="grid gap-1 text-sm font-bold">
                   Link do nagrania VEO
                   <input
                     value={form.veoUrl}
@@ -366,8 +438,11 @@ export default function AdminMatchesPage() {
             ) : null}
           </div>
           <div className="mt-5 flex gap-2">
-            <Button onClick={handleSave} disabled={!form.homeTeam || !form.awayTeam}>
-              Zapisz
+            <Button
+              onClick={handleSave}
+              disabled={isSaving || !form.homeTeam || !form.awayTeam}
+            >
+              {isSaving ? "Zapisywanie…" : "Zapisz"}
             </Button>
             <Button variant="ghost" onClick={() => setEditingId(null)}>
               Anuluj
@@ -456,7 +531,13 @@ export default function AdminMatchesPage() {
                 ) : null}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                {formatDate(match.date)} · {typeLabels[match.matchType]} ·{" "}
+                {formatDate(match.date)}
+                {match.dateConfirmed === false ? (
+                  <span className="ml-2 rounded-full bg-[var(--surface-raised)] px-2 py-0.5 font-bold text-accent">
+                    termin orientacyjny{match.roundLabel ? `: ${match.roundLabel}` : ""}
+                  </span>
+                ) : null}{" "}
+                · {typeLabels[match.matchType]} ·{" "}
                 {match.source === "manual" || !match.source
                   ? "ręczny"
                   : `sync: ${match.source}`}

@@ -8,6 +8,7 @@ import type { Id } from "../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Field, Feedback, inputClass } from "@/components/admin/fields";
 import { FileUpload } from "@/components/admin/FileUpload";
+import { errorMessage } from "@/lib/convexError";
 
 type FormState = {
   name: string;
@@ -29,24 +30,56 @@ export default function AdminSponsorsPage() {
   const updateSponsor = useMutation(api.sponsors.update);
   const removeSponsor = useMutation(api.sponsors.removeSponsor);
   const reorder = useMutation(api.sponsors.reorder);
+  const removeUpload = useMutation(api.files.removeUpload);
 
   const [editingId, setEditingId] = useState<Id<"sponsors"> | "new" | null>(
     null,
   );
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function handleSave() {
+  // Kasujemy tylko logo wgrane w tej sesji formularza i porzucone przed
+  // zapisem - plik zapisany już w dokumencie zostaje nietknięty.
+  async function discardUpload(storageId: Id<"_storage">) {
+    try {
+      await removeUpload({ storageId });
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
+  async function handleReorder(id: Id<"sponsors">, direction: "up" | "down") {
     setError(null);
+    try {
+      await reorder({ id, direction });
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
+  async function handleRemove(id: Id<"sponsors">) {
+    if (!window.confirm("Usunąć tego sponsora?")) return;
+    setError(null);
+    try {
+      await removeSponsor({ id });
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
+  async function handleSave() {
+    if (busy) return;
+    setError(null);
+    setBusy(true);
     try {
       if (editingId === "new") {
         if (!form.logoStorageId) {
-          setError("Dodaj logo — jest wymagane");
-          return;
+          throw new Error("Dodaj logo — jest wymagane");
         }
         await createSponsor({
           name: form.name,
@@ -64,8 +97,11 @@ export default function AdminSponsorsPage() {
         });
       }
       setEditingId(null);
+      setForm(emptyForm);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Coś poszło nie tak");
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -127,15 +163,27 @@ export default function AdminSponsorsPage() {
               <FileUpload
                 label="Logo (obraz, max 10 MB)"
                 accept="image/*"
-                onUploaded={(ids) => set("logoStorageId", ids[0])}
+                onUploaded={(ids) => {
+                  if (form.logoStorageId && form.logoStorageId !== ids[0]) {
+                    void discardUpload(form.logoStorageId);
+                  }
+                  set("logoStorageId", ids[0]);
+                }}
               />
             </div>
           </div>
           <div className="mt-5 flex gap-2">
-            <Button onClick={handleSave} disabled={!form.name}>
-              Zapisz
+            <Button onClick={handleSave} disabled={busy || !form.name}>
+              {busy ? "Zapisywanie…" : "Zapisz"}
             </Button>
-            <Button variant="ghost" onClick={() => setEditingId(null)}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                if (form.logoStorageId) void discardUpload(form.logoStorageId);
+                setEditingId(null);
+                setForm(emptyForm);
+              }}
+            >
               Anuluj
             </Button>
           </div>
@@ -158,9 +206,7 @@ export default function AdminSponsorsPage() {
                       type="button"
                       aria-label="Przesuń wyżej"
                       disabled={index === 0}
-                      onClick={() =>
-                        reorder({ id: sponsor._id, direction: "up" })
-                      }
+                      onClick={() => handleReorder(sponsor._id, "up")}
                       className="text-muted-foreground disabled:opacity-30"
                     >
                       ▲
@@ -169,9 +215,7 @@ export default function AdminSponsorsPage() {
                       type="button"
                       aria-label="Przesuń niżej"
                       disabled={index === items.length - 1}
-                      onClick={() =>
-                        reorder({ id: sponsor._id, direction: "down" })
-                      }
+                      onClick={() => handleReorder(sponsor._id, "down")}
                       className="text-muted-foreground disabled:opacity-30"
                     >
                       ▼
@@ -214,11 +258,7 @@ export default function AdminSponsorsPage() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => {
-                        if (window.confirm("Usunąć tego sponsora?")) {
-                          removeSponsor({ id: sponsor._id });
-                        }
-                      }}
+                      onClick={() => handleRemove(sponsor._id)}
                     >
                       Usuń
                     </Button>

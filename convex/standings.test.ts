@@ -4,7 +4,7 @@ import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
 
-const asAdmin = { subject: "admin|1", issuer: "https://example.com" };
+const asAdmin = { subject: "admin|1", issuer: "https://example.com", email: "admin@rksokecie.pl" };
 
 const row = {
   position: 1,

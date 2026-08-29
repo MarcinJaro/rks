@@ -47,8 +47,8 @@ export function FileUpload({
       return;
     }
     setBusy(true);
+    const ids: Id<"_storage">[] = [];
     try {
-      const ids: Id<"_storage">[] = [];
       for (const file of files) {
         const url = await generateUploadUrl();
         const response = await fetch(url, {
@@ -65,7 +65,15 @@ export function FileUpload({
       onUploaded(ids);
       if (inputRef.current) inputRef.current.value = "";
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Błąd wysyłania pliku");
+      // Błąd w środku serii nie może gubić plików już wysłanych - inaczej
+      // wiszą w storage bez referencji, a admin wysyła wszystko od nowa.
+      if (ids.length > 0) onUploaded(ids);
+      const base = err instanceof Error ? err.message : "Błąd wysyłania pliku";
+      setError(
+        ids.length > 0
+          ? `${base}. Wysłano ${ids.length} z ${files.length} plików - dodaj brakujące ponownie.`
+          : base,
+      );
     } finally {
       setBusy(false);
     }

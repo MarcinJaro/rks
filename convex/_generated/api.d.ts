@@ -24,6 +24,8 @@ import type * as matches from "../matches.js";
 import type * as matchesSync from "../matchesSync.js";
 import type * as pages from "../pages.js";
 import type * as people from "../people.js";
+import type * as players from "../players.js";
+import type * as regulations from "../regulations.js";
 import type * as seed from "../seed.js";
 import type * as settings from "../settings.js";
 import type * as slugify from "../slugify.js";
@@ -59,6 +61,8 @@ declare const fullApi: ApiFromModules<{
   matchesSync: typeof matchesSync;
   pages: typeof pages;
   people: typeof people;
+  players: typeof players;
+  regulations: typeof regulations;
   seed: typeof seed;
   settings: typeof settings;
   slugify: typeof slugify;

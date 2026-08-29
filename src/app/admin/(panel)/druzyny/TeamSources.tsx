@@ -6,6 +6,7 @@ import { api } from "../../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Field, Feedback, inputClass } from "@/components/admin/fields";
+import { errorMessage } from "@/lib/convexError";
 
 type SyncSource = Doc<"syncSources">;
 type SourceMatchType = SyncSource["matchType"];
@@ -47,13 +48,21 @@ export function TeamSources({ teamId }: { teamId: Id<"teams"> }) {
 
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  // Edycja pomyłki w nazwie/typie bez kasowania i dodawania źródła od nowa.
+  const [editingSourceId, setEditingSourceId] =
+    useState<Id<"syncSources"> | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editType, setEditType] = useState<SourceMatchType>("liga");
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
   async function handleAdd() {
+    if (busy) return;
     setError(null);
+    setBusy(true);
     try {
       await addSource({
         teamId,
@@ -63,7 +72,27 @@ export function TeamSources({ teamId }: { teamId: Id<"teams"> }) {
       });
       setForm(emptyForm);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Coś poszło nie tak");
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleEditSave(sourceId: Id<"syncSources">) {
+    if (busy) return;
+    setError(null);
+    setBusy(true);
+    try {
+      await updateSource({
+        sourceId,
+        teamNameOnSource: editName.trim(),
+        matchType: editType,
+      });
+      setEditingSourceId(null);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -72,7 +101,7 @@ export function TeamSources({ teamId }: { teamId: Id<"teams"> }) {
     try {
       await updateSource({ sourceId: source._id, enabled: !source.enabled });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Coś poszło nie tak");
+      setError(errorMessage(err));
     }
   }
 
@@ -84,7 +113,7 @@ export function TeamSources({ teamId }: { teamId: Id<"teams"> }) {
     try {
       await removeSource({ sourceId });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Coś poszło nie tak");
+      setError(errorMessage(err));
     }
   }
 
@@ -147,12 +176,66 @@ export function TeamSources({ teamId }: { teamId: Id<"teams"> }) {
               </Button>
               <Button
                 size="sm"
+                variant="outline"
+                onClick={() => {
+                  setEditingSourceId(source._id);
+                  setEditName(source.teamNameOnSource);
+                  setEditType(source.matchType);
+                  setError(null);
+                }}
+              >
+                Edytuj
+              </Button>
+              <Button
+                size="sm"
                 variant="ghost"
                 onClick={() => handleDelete(source._id)}
               >
                 Usuń
               </Button>
             </div>
+            {editingSourceId === source._id ? (
+              <div className="grid w-full gap-3 rounded-md border border-border p-3 md:grid-cols-3">
+                <Field label="Nazwa drużyny u źródła">
+                  <input
+                    value={editName}
+                    onChange={(event) => setEditName(event.target.value)}
+                    className={inputClass}
+                  />
+                </Field>
+                <Field label="Typ meczów">
+                  <select
+                    value={editType}
+                    onChange={(event) =>
+                      setEditType(event.target.value as SourceMatchType)
+                    }
+                    className={inputClass}
+                  >
+                    {Object.entries(typeLabels).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <div className="flex items-end gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => handleEditSave(source._id)}
+                    disabled={busy || !editName.trim()}
+                  >
+                    {busy ? "Zapisywanie…" : "Zapisz"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setEditingSourceId(null)}
+                  >
+                    Anuluj
+                  </Button>
+                </div>
+              </div>
+            ) : null}
             {source.lastError ? (
               <p className="w-full rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-300">
                 Błąd ostatniej synchronizacji: {source.lastError}
@@ -203,9 +286,9 @@ export function TeamSources({ teamId }: { teamId: Id<"teams"> }) {
       <div className="mt-5 flex gap-2">
         <Button
           onClick={handleAdd}
-          disabled={!form.url.trim() || !form.teamNameOnSource.trim()}
+          disabled={busy || !form.url.trim() || !form.teamNameOnSource.trim()}
         >
-          Dodaj źródło
+          {busy ? "Dodawanie…" : "Dodaj źródło"}
         </Button>
       </div>
 

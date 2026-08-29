@@ -19,7 +19,7 @@ const LEAGUE_URL = "http://www.90minut.pl/liga/1/liga14256.html";
 const VIRIUM_URL =
   "https://web.virium.pl/rssport/teams/03ea137c-d0e4-4739-be1b-d5d95fe28977";
 
-const asAdmin = { subject: "admin|1", issuer: "https://example.com" };
+const asAdmin = { subject: "admin|1", issuer: "https://example.com", email: "admin@rksokecie.pl" };
 
 // Górna połowa ISO-8859-2 — lustro tablicy z convex/sources/encoding.ts.
 const LATIN2_HIGH_RANGE =

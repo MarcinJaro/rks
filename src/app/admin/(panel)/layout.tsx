@@ -12,9 +12,13 @@ const navItems = [
   { href: "/admin/mecze", label: "Mecze" },
   { href: "/admin/druzyny", label: "Drużyny" },
   { href: "/admin/ludzie", label: "Ludzie" },
+  { href: "/admin/kadry", label: "Kadry" },
   { href: "/admin/sponsorzy", label: "Sponsorzy" },
   { href: "/admin/galerie", label: "Galerie" },
   { href: "/admin/dokumenty", label: "Dokumenty" },
+  { href: "/admin/fb-posts", label: "Posty FB" },
+  { href: "/admin/articles", label: "Artykuły" },
+  { href: "/admin/regulamin", label: "Akceptacje regulaminu" },
   { href: "/admin/ustawienia", label: "Ustawienia" },
 ];
 

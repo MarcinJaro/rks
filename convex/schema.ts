@@ -105,6 +105,17 @@ export default defineSchema({
     .index("by_role", ["role", "sortOrder"])
     .index("by_team", ["teamId"]),
 
+  // Kadry drużyn wprowadzane przez klub w panelu. Gdy drużyna ma tu choć
+  // jednego zawodnika, panel staje się dla niej jedynym źródłem składu -
+  // statyczna lista z src/data/roster.ts przestaje być wtedy używana.
+  players: defineTable({
+    name: v.string(),
+    number: v.optional(v.string()),
+    teamId: v.id("teams"),
+    photoStorageId: v.optional(v.id("_storage")),
+    sortOrder: v.number(),
+  }).index("by_team", ["teamId", "sortOrder"]),
+
   matches: defineTable({
     homeTeam: v.string(),
     awayTeam: v.string(),
@@ -146,6 +157,9 @@ export default defineSchema({
     articleId: v.optional(v.id("articles")),
     veoUrl: v.optional(v.string()),
     youtubeUrl: v.optional(v.string()),
+    // Pola nadpisane ręcznie w panelu - synchronizacja ze źródła ich nie rusza,
+    // żeby nie skasować np. wpisanego wyniku zanim źródło go opublikuje.
+    manualFields: v.optional(v.array(v.string())),
   })
     .index("by_date", ["date"])
     .index("by_team", ["teamId", "date"])
@@ -276,4 +290,30 @@ export default defineSchema({
     key: v.string(),
     value: v.string(),
   }).index("by_key", ["key"]),
+
+  // Akceptacje regulaminu klubu składane przez rodziców z publicznego
+  // formularza. Wersja dokumentu jest zapisywana razem ze zgodą - bez niej
+  // nie da się później wykazać, na co dokładnie rodzic się zgodził.
+  regulationAcceptances: defineTable({
+    parentName: v.string(),
+    parentEmail: v.string(),
+    parentPhone: v.optional(v.string()),
+    childName: v.string(),
+    childYearGroup: v.string(),
+    // PESEL-e jak w formularzu na starej stronie. Opcjonalne w schemacie,
+    // bo wpisy sprzed tej zmiany ich nie mają - mutacja wymusza obecność.
+    childPesel: v.optional(v.string()),
+    parentPesel: v.optional(v.string()),
+    documentVersion: v.string(),
+    // Stary serwis zbierał trzy odrębne zgody - zapisujemy każdą osobno,
+    // żeby dało się wykazać, co dokładnie rodzic zaznaczył.
+    acceptedRegulation: v.boolean(),
+    acceptedChildProtection: v.boolean(),
+    acceptedDataProcessing: v.boolean(),
+    acceptedAt: v.number(),
+    // Klucz deduplikacji: znormalizowane dziecko + wersja regulaminu.
+    dedupeKey: v.string(),
+  })
+    .index("by_acceptedAt", ["acceptedAt"])
+    .index("by_dedupeKey", ["dedupeKey"]),
 });

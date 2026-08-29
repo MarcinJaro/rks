@@ -37,7 +37,9 @@ const nextConfig: NextConfig = {
         destination: "/klub/certyfikacja-pzpn",
         permanent: true,
       },
-      { source: "/dla-rodzicow", destination: "/rodzice", permanent: true },
+      { source: "/dla-rodzicow", destination: "/zawodnik", permanent: true },
+      // Sekcja "Rodzice" została wchłonięta przez "Zawodnik".
+      { source: "/rodzice", destination: "/zawodnik", permanent: true },
       { source: "/reklama", destination: "/wspieraj", permanent: true },
       { source: "/niw-crso", destination: "/klub/niw-crso", permanent: true },
       { source: "/strona-glowna", destination: "/", permanent: true },

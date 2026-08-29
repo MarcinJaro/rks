@@ -7,6 +7,7 @@ import type { Id } from "../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Field, Feedback, inputClass } from "@/components/admin/fields";
 import { FileUpload } from "@/components/admin/FileUpload";
+import { errorMessage } from "@/lib/convexError";
 
 export default function AdminDocumentsPage() {
   const documents = useQuery(api.documents.list);
@@ -20,18 +21,35 @@ export default function AdminDocumentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<Id<"documents"> | null>(null);
+  const [busy, setBusy] = useState(false);
+  const removeUpload = useMutation(api.files.removeUpload);
+
+  // Plik wgrany w tej sesji i porzucony przed zapisem musi zniknąć ze storage.
+  function discardPendingUpload() {
+    if (fileStorageId) {
+      void removeUpload({ storageId: fileStorageId }).catch(() => {});
+    }
+  }
 
   async function handleSave() {
+    if (busy) return;
     setError(null);
     setMessage(null);
+    setBusy(true);
     try {
       if (editingId) {
-        await updateDocument({ id: editingId, title, category });
+        await updateDocument({
+          id: editingId,
+          title,
+          category,
+          // Nowy plik podmienia stary (backend kasuje poprzedni ze storage).
+          ...(fileStorageId ? { fileStorageId } : {}),
+        });
         setEditingId(null);
+        setMessage("Dokument zapisany");
       } else {
         if (!fileStorageId) {
-          setError("Dodaj plik PDF");
-          return;
+          throw new Error("Dodaj plik PDF");
         }
         await createDocument({ title, category, fileStorageId });
         setMessage("Dokument dodany");
@@ -40,7 +58,9 @@ export default function AdminDocumentsPage() {
       setCategory("");
       setFileStorageId("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Coś poszło nie tak");
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -69,30 +89,38 @@ export default function AdminDocumentsPage() {
               className={inputClass}
             />
           </Field>
-          {!editingId ? (
-            <div className="md:col-span-2">
-              <FileUpload
-                label="Plik PDF (max 20 MB)"
-                accept="application/pdf"
-                maxSizeMb={20}
-                onUploaded={(ids) => setFileStorageId(ids[0])}
-              />
-              {fileStorageId ? (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Plik wysłany — zapisze się po kliknięciu &quot;Zapisz&quot;.
-                </p>
-              ) : null}
-            </div>
-          ) : null}
+          <div className="md:col-span-2">
+            <FileUpload
+              label={
+                editingId
+                  ? "Nowy plik PDF (opcjonalnie - podmieni obecny)"
+                  : "Plik PDF (max 20 MB)"
+              }
+              accept="application/pdf"
+              maxSizeMb={20}
+              onUploaded={(ids) => {
+                if (fileStorageId && fileStorageId !== ids[0]) {
+                  void removeUpload({ storageId: fileStorageId }).catch(() => {});
+                }
+                setFileStorageId(ids[0]);
+              }}
+            />
+            {fileStorageId ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Plik wysłany — zapisze się po kliknięciu &quot;Zapisz&quot;.
+              </p>
+            ) : null}
+          </div>
         </div>
         <div className="mt-5 flex gap-2">
-          <Button onClick={handleSave} disabled={!title || !category}>
-            Zapisz
+          <Button onClick={handleSave} disabled={busy || !title || !category}>
+            {busy ? "Zapisywanie…" : "Zapisz"}
           </Button>
           {editingId ? (
             <Button
               variant="ghost"
               onClick={() => {
+                discardPendingUpload();
                 setEditingId(null);
                 setTitle("");
                 setCategory("");
@@ -155,9 +183,7 @@ export default function AdminDocumentsPage() {
                     try {
                       await removeDocument({ id: document._id });
                     } catch (err) {
-                      setError(
-                        err instanceof Error ? err.message : "Coś poszło nie tak",
-                      );
+                      setError(errorMessage(err));
                     }
                   }
                 }}
