@@ -309,6 +309,30 @@ export const getPostBySlug = query({
   },
 });
 
+/**
+ * Posty przypisane do drużyny (moderacja w panelu: Posty FB -> drużyna).
+ * Strony drużyn są statyczne i znają tylko slug, stąd rozwiązanie po slugu.
+ */
+export const getTeamFeed = query({
+  args: { teamSlug: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, { teamSlug, limit }) => {
+    const team = await ctx.db
+      .query("teams")
+      .withIndex("by_slug", (q) => q.eq("slug", teamSlug))
+      .first();
+    if (!team) return [];
+
+    const posts = await ctx.db
+      .query("fbPosts")
+      .withIndex("by_team", (q) => q.eq("teamId", team._id))
+      .order("desc")
+      .filter((q) => q.eq(q.field("isHidden"), false))
+      .take(limit ?? 3);
+
+    return await Promise.all(posts.map((post) => mapFbPost(ctx, post)));
+  },
+});
+
 export const getLatestFbPosts = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {

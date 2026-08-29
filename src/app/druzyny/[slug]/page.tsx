@@ -2,13 +2,13 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import { Mail, Phone } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { fallbackPosts, teams } from "@/data/site";
-import { FeedItem } from "@/components/facebook/FeedItem";
+import { teams } from "@/data/site";
 import { getTeamRoster } from "@/data/roster";
 import { teamContacts } from "@/data/legacy";
 import { teamCampPhotos } from "@/data/campPhotos";
 import { PersonCard } from "@/components/teams/PersonCard";
 import { TeamRoster } from "@/components/teams/TeamRoster";
+import { TeamNews } from "@/components/teams/TeamNews";
 import { telHref } from "@/lib/phone";
 
 export function generateStaticParams() {
@@ -126,16 +126,7 @@ export default async function TeamPage({
             </dl>
           </div>
 
-          <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-            <h2 className="text-2xl font-black text-navy">
-              Aktualności drużyny
-            </h2>
-            <div className="mt-5 grid gap-5">
-              {fallbackPosts.slice(0, 2).map((post) => (
-                <FeedItem key={post.title} {...post} />
-              ))}
-            </div>
-          </div>
+          <TeamNews slug={team.slug} />
         </aside>
       </section>
     </>
