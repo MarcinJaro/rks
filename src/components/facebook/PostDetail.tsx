@@ -6,7 +6,9 @@ import { ArrowLeft, PlayCircle } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { formatDate } from "@/lib/utils";
+import Image from "next/image";
 import { buildFeedTitle, removeEmoji } from "@/lib/feedText";
+import { parsePostBody } from "@/lib/postBody";
 import { getVideoEmbed } from "@/lib/videoEmbed";
 
 export function PostDetail({ slug }: { slug: string }) {
@@ -69,6 +71,7 @@ function LiveDetail({ slug }: { slug: string }) {
         <h1 className="text-3xl font-black leading-tight text-white md:text-5xl">
           {title}
         </h1>
+        <div className="mt-5 h-1.5 w-24 bg-primary" aria-hidden />
       </header>
 
       {embed ? (
@@ -86,14 +89,21 @@ function LiveDetail({ slug }: { slug: string }) {
           />
         </div>
       ) : heroUrl ? (
-        <div className="relative mx-auto mt-8 aspect-[16/9] max-w-4xl overflow-hidden rounded-lg border border-white/8 bg-[var(--feed-media)]">
-          <SmartCropImage
+        // Na stronie wpisu liczy się CAŁA grafika (składy, plakaty) - żadnego
+        // kadrowania: obraz w naturalnych proporcjach, ograniczony wysokością.
+        <div className="relative mx-auto mt-8 w-fit max-w-4xl">
+          <Image
             src={heroUrl}
             alt={title}
-            fill
+            width={1280}
+            height={1280}
             unoptimized={isLocal(heroUrl)}
             sizes="(min-width: 1024px) 896px, 100vw"
-            className="object-cover"
+            // min-width w vw, nie w %: rodzic ma w-fit, więc procent byłby
+            // cyrkularny i przeglądarka by go zignorowała. UWAGA: min-width
+            // wygrywa z max-width, stąd ograniczenie viewportem, nie 100%.
+            style={{ minWidth: "min(28rem, calc(100vw - 3rem))" }}
+            className="mx-auto h-auto max-h-[38rem] w-auto max-w-full rounded-lg border border-white/8"
             priority
           />
           {post.postType === "video" && post.videoUrl ? (
@@ -101,7 +111,7 @@ function LiveDetail({ slug }: { slug: string }) {
               href={post.videoUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="absolute inset-0 grid place-items-center bg-black/30"
+              className="absolute inset-0 grid place-items-center rounded-lg bg-black/30"
             >
               <span className="grid h-20 w-20 place-items-center rounded-full bg-accent text-[#002e5e] shadow-2xl shadow-black/30">
                 <PlayCircle size={44} />
@@ -112,10 +122,51 @@ function LiveDetail({ slug }: { slug: string }) {
       ) : null}
 
       {post.contentHtml ? (
-        <div
-          className="prose-fb mx-auto mt-10 max-w-3xl text-base leading-8 text-white/85 [&_a]:font-bold [&_a]:text-accent [&_a]:underline [&_.hashtag]:font-bold [&_.hashtag]:text-accent"
-          dangerouslySetInnerHTML={{ __html: removeEmoji(post.contentHtml) }}
-        />
+        <div className="mx-auto mt-10 max-w-3xl [&_a]:font-bold [&_a]:text-accent [&_a]:underline [&_.hashtag]:font-bold [&_.hashtag]:text-accent">
+          {parsePostBody(removeEmoji(post.contentHtml), title).map(
+            (block, index) => {
+              if (block.kind === "tags") {
+                return (
+                  <div key={index} className="mt-10 flex flex-wrap gap-2">
+                    {block.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-bold text-accent"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                );
+              }
+              if (block.kind === "shout") {
+                return (
+                  <p
+                    key={index}
+                    className="mt-8 border-l-4 border-primary pl-4 text-lg font-black uppercase tracking-wide text-primary md:text-xl"
+                    dangerouslySetInnerHTML={{ __html: block.html }}
+                  />
+                );
+              }
+              if (block.kind === "lede") {
+                return (
+                  <p
+                    key={index}
+                    className="mt-2 text-xl font-medium leading-9 text-white"
+                    dangerouslySetInnerHTML={{ __html: block.html }}
+                  />
+                );
+              }
+              return (
+                <p
+                  key={index}
+                  className="mt-6 text-base leading-8 text-white/85"
+                  dangerouslySetInnerHTML={{ __html: block.html }}
+                />
+              );
+            },
+          )}
+        </div>
       ) : null}
 
       {gallery.length > 0 ? (
