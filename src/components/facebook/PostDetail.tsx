@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { SmartCropImage } from "@/components/shared/SmartCropImage";
 import Link from "next/link";
 import { ArrowLeft, PlayCircle } from "lucide-react";
 import { useQuery } from "convex/react";
@@ -87,7 +87,7 @@ function LiveDetail({ slug }: { slug: string }) {
         </div>
       ) : heroUrl ? (
         <div className="relative mx-auto mt-8 aspect-[16/9] max-w-4xl overflow-hidden rounded-lg border border-white/8 bg-[var(--feed-media)]">
-          <Image
+          <SmartCropImage
             src={heroUrl}
             alt={title}
             fill
@@ -125,7 +125,7 @@ function LiveDetail({ slug }: { slug: string }) {
               key={url}
               className="relative aspect-[4/3] overflow-hidden rounded-lg border border-white/8 bg-[var(--feed-media)]"
             >
-              <Image
+              <SmartCropImage
                 src={url}
                 alt={title}
                 fill

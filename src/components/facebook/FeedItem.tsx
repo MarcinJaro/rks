@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { SmartCropImage } from "@/components/shared/SmartCropImage";
 import Link from "next/link";
 import { PlayCircle } from "lucide-react";
 import { formatDate } from "@/lib/utils";
@@ -52,20 +53,25 @@ export function FeedItem({
             : "aspect-[16/11]"
       }`}
     >
-      <Image
-        src={imageSrc}
-        alt={title}
-        fill
-        unoptimized={isLocalStorage}
-        sizes={featured ? "(min-width: 768px) 50vw, 100vw" : "(min-width: 1024px) 33vw, 100vw"}
-        className={
-          imageUrl && imageFit === "cover"
-            ? "object-cover transition duration-500 group-hover:scale-105"
-            : imageUrl
-              ? "object-contain p-3"
-              : "object-contain p-14"
-        }
-      />
+      {imageUrl && imageFit === "cover" ? (
+        <SmartCropImage
+          src={imageSrc}
+          alt={title}
+          fill
+          unoptimized={isLocalStorage}
+          sizes={featured ? "(min-width: 768px) 50vw, 100vw" : "(min-width: 1024px) 33vw, 100vw"}
+          className="object-cover transition duration-500 group-hover:scale-105"
+        />
+      ) : (
+        <Image
+          src={imageSrc}
+          alt={title}
+          fill
+          unoptimized={isLocalStorage}
+          sizes={featured ? "(min-width: 768px) 50vw, 100vw" : "(min-width: 1024px) 33vw, 100vw"}
+          className={imageUrl ? "object-contain p-3" : "object-contain p-14"}
+        />
+      )}
       {mediaType === "video" ? (
         <div className="absolute inset-0 grid place-items-center bg-black/20">
           <span className="grid h-16 w-16 place-items-center rounded-full bg-accent text-[#002e5e] shadow-2xl shadow-black/30">
