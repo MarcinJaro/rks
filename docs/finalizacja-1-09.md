@@ -155,3 +155,12 @@ Wszystkie pozycje z listy długu zostały naprawione:
 - **Puste centrum meczowe**: wyłączone źródła nie tworzą już pustych zakładek.
 - **AppProviders**: przy braku NEXT_PUBLIC_CONVEX_URL trasa /admin pokazuje
   jawny komunikat konfiguracyjny zamiast krachu.
+
+## Poprawki po przeglądzie klienta 2026-08-29 (commit 40fb103)
+
+- **Karty /druzyny przywrócone do grafik** (Higgsfield) - klient: „zostaw te
+  co były". Zdjęcia obozowe zostają wyłącznie na stronach drużyn jako sekcja
+  „Obóz letni 2026". Skrypt generate-camp-cards.mjs nie dotyka już kart.
+- **Boczne „Aktualności drużyny"** nie pokazują seniorskich fallbacków na
+  stronach roczników: czytają posty przypisane drużynie w panelu (Posty FB →
+  drużyna, `feed.getTeamFeed`); bez przypisanych postów sekcja znika.
