@@ -19,6 +19,12 @@ const contactPeople = [
     email: "j.kilman@rksokecie.pl",
   },
   {
+    label: "Kierownik sekcji piłki nożnej",
+    name: "Leszek Zygmunt",
+    phone: "603 985 208",
+    email: "l.zygmunt@rksokecie.pl",
+  },
+  {
     label: "Kierownik klubu",
     name: "Sekretariat RKS Okęcie",
     phone: "798 876 570",
