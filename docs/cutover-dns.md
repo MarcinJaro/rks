@@ -1,5 +1,13 @@
 # Cutover domeny rksokecie.pl na nową stronę (Vercel)
 
+> **STATUS 2026-09-01: WYKONANE** (kroki 2–5). Zweryfikowane na żywo:
+> apex → 76.76.21.21 (200, server: Vercel, tytuł OK), www → 308 na apex,
+> stare URL-e → 308 na nowe (próbka OK), sitemap/robots OK, poczta nietknięta,
+> legacy ma X-Robots-Tag noindex (ale origin 403 — czeka na krok 1).
+> **Zostało:** krok 1 (alias legacy w panelu CyberFolks — klient) i krok 6
+> (GSC: property + sitemap — ręcznie). Uwaga: konto Cloudflare ma zaległość
+> $6.20 (overdue) — opłacić w Billing.
+
 Stan przed: apex/www za proxy Cloudflare (188.114.x.x) → stary Drupal
 (origin 185.208.164.60, CyberFolks). Poczta na CyberFolks - rekordy mail/smtp/
 pop/ftp szare, MX bez zmian. Nowa strona: projekt `rks` na koncie Vercel
