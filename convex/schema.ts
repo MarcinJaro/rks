@@ -28,6 +28,9 @@ export default defineSchema({
     imageStorageId: v.optional(v.id("_storage")),
     imageIds: v.optional(v.array(v.id("_storage"))),
     videoUrl: v.optional(v.string()),
+    // false = FB odmawia osadzenia (np. muzyka objęta prawami autorskimi);
+    // brak wartości = nieznane, próbujemy osadzić jak dotychczas.
+    videoEmbeddable: v.optional(v.boolean()),
     linkUrl: v.optional(v.string()),
     linkTitle: v.optional(v.string()),
     linkDescription: v.optional(v.string()),

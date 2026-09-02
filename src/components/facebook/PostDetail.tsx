@@ -45,8 +45,10 @@ function LiveDetail({ slug }: { slug: string }) {
     (url): url is string => Boolean(url) && url !== heroUrl,
   );
   const isLocal = (url: string) => url.startsWith("http://127.0.0.1");
+  // videoEmbeddable === false: FB odmawia osadzenia (prawa autorskie) —
+  // pokazujemy miniaturę z linkiem do FB zamiast ramki "Niedostępna".
   const embed =
-    post.postType === "video" && post.videoUrl
+    post.postType === "video" && post.videoUrl && post.videoEmbeddable !== false
       ? getVideoEmbed(post.videoUrl)
       : null;
 

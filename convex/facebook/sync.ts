@@ -135,6 +135,32 @@ export const syncFromFacebook = internalAction({
   },
 });
 
+/**
+ * FB blokuje osadzanie niektórych filmów poza serwisem (np. z muzyką objętą
+ * prawami autorskimi). Plugin zwraca wtedy 200 ze statyczną stroną błędu,
+ * której jedynym stabilnym, niezależnym od języka markerem jest link do
+ * artykułu pomocy "dlaczego nie można osadzić filmu".
+ */
+export function isVideoEmbedBlocked(html: string): boolean {
+  return html.includes("help/396404120401278") || html.includes("ref=embed_video");
+}
+
+/** undefined = nie udało się sprawdzić — nie nadpisujemy zapisanej flagi. */
+async function probeVideoEmbeddable(
+  videoUrl: string,
+): Promise<boolean | undefined> {
+  try {
+    const response = await fetch(
+      `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(videoUrl)}&show_text=false`,
+      { headers: { "User-Agent": "Mozilla/5.0 (compatible; RKS-Okecie-Sync)" } },
+    );
+    if (!response.ok) return undefined;
+    return !isVideoEmbedBlocked(await response.text());
+  } catch {
+    return undefined;
+  }
+}
+
 async function processFeedPosts(ctx: ActionCtx, posts: FacebookPost[]) {
   let created = 0;
   let updated = 0;
@@ -178,11 +204,20 @@ async function processFeedPosts(ctx: ActionCtx, posts: FacebookPost[]) {
         teamId = team?._id;
       }
 
+      const videoUrl =
+        postType === "video"
+          ? existing?.videoUrl || firstAttachment?.url
+          : undefined;
+      const videoEmbeddable = videoUrl
+        ? await probeVideoEmbeddable(videoUrl)
+        : undefined;
+
       if (existing) {
         await ctx.runMutation(internal.facebook.sync.updatePost, {
           id: existing._id,
           content,
           contentHtml,
+          videoEmbeddable,
           reactionsCount: post.reactions?.summary?.total_count || 0,
           commentsCount: post.comments?.summary?.total_count || 0,
           sharesCount: post.shares?.count || 0,
@@ -201,7 +236,8 @@ async function processFeedPosts(ctx: ActionCtx, posts: FacebookPost[]) {
           postType,
           imageStorageId,
           imageIds: imageIds.length > 0 ? imageIds : undefined,
-          videoUrl: postType === "video" ? firstAttachment?.url : undefined,
+          videoUrl,
+          videoEmbeddable,
           linkUrl: postType === "link" ? firstAttachment?.url : undefined,
           linkTitle: firstAttachment?.title,
           linkDescription: firstAttachment?.description,
@@ -358,6 +394,7 @@ export const insertPost = internalMutation({
     imageStorageId: v.optional(v.id("_storage")),
     imageIds: v.optional(v.array(v.id("_storage"))),
     videoUrl: v.optional(v.string()),
+    videoEmbeddable: v.optional(v.boolean()),
     linkUrl: v.optional(v.string()),
     linkTitle: v.optional(v.string()),
     linkDescription: v.optional(v.string()),
@@ -385,14 +422,19 @@ export const updatePost = internalMutation({
     id: v.id("fbPosts"),
     content: v.optional(v.string()),
     contentHtml: v.optional(v.string()),
+    videoEmbeddable: v.optional(v.boolean()),
     reactionsCount: v.number(),
     commentsCount: v.number(),
     sharesCount: v.number(),
     fbUpdatedAt: v.optional(v.number()),
     syncedAt: v.number(),
   },
-  handler: async (ctx, { id, ...fields }) => {
-    await ctx.db.patch(id, fields);
+  handler: async (ctx, { id, videoEmbeddable, ...fields }) => {
+    await ctx.db.patch(id, {
+      ...fields,
+      // Nieudana sonda embedu (undefined) nie może skasować zapisanej flagi.
+      ...(videoEmbeddable === undefined ? {} : { videoEmbeddable }),
+    });
   },
 });
 

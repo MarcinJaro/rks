@@ -274,6 +274,7 @@ export const getPostBySlug = query({
           : [],
         postType: post.postType,
         videoUrl: post.videoUrl,
+        videoEmbeddable: post.videoEmbeddable,
         publishedAt: post.publishedAt,
         category: post.category,
       };
@@ -300,6 +301,7 @@ export const getPostBySlug = query({
           : ([] as (string | null)[]),
         postType: "article",
         videoUrl: undefined,
+        videoEmbeddable: undefined,
         publishedAt: article.publishedAt || 0,
         category: article.category,
       };
