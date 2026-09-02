@@ -218,7 +218,7 @@ export default function AdminPeoplePage() {
                 onChange={(event) => set("teamId", event.target.value)}
                 className={inputClass}
               >
-                <option value="">— brak —</option>
+                <option value="">Brak przypisania</option>
                 {(teams ?? []).map((team) => (
                   <option key={team._id} value={team._id}>
                     {team.name}
@@ -331,7 +331,7 @@ export default function AdminPeoplePage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-black text-navy">{person.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {person.position || "—"}
+                    {person.position || "Brak stanowiska"}
                   </p>
                 </div>
                 <div className="flex gap-2">

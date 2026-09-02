@@ -389,7 +389,7 @@ export default function AdminMatchesPage() {
                 onChange={(event) => set("teamId", event.target.value)}
                 className={inputClass}
               >
-                <option value="">— brak —</option>
+                <option value="">Brak przypisania</option>
                 {(teams ?? []).map((team) => (
                   <option key={team._id} value={team._id}>
                     {team.name}
@@ -523,7 +523,7 @@ export default function AdminMatchesPage() {
           >
             <div className="min-w-0">
               <p className="font-black text-navy">
-                {match.homeTeam} — {match.awayTeam}
+                {match.homeTeam} vs {match.awayTeam}
                 {match.result ? (
                   <span className="ml-2 rounded-md bg-primary px-2 py-0.5 text-sm text-primary-foreground">
                     {match.result}

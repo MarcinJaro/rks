@@ -170,7 +170,7 @@ export default function AdminGalleriesPage() {
                 onChange={(event) => set("teamId", event.target.value)}
                 className={inputClass}
               >
-                <option value="">— brak —</option>
+                <option value="">Brak przypisania</option>
                 {(teams ?? []).map((team) => (
                   <option key={team._id} value={team._id}>
                     {team.name}
@@ -196,7 +196,7 @@ export default function AdminGalleriesPage() {
               />
               {form.imageIds.length ? (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Wysłano {form.imageIds.length} zdjęć — zapiszą się po
+                  Wysłano {form.imageIds.length} zdjęć. Zapiszą się po
                   kliknięciu &quot;Zapisz&quot;.
                 </p>
               ) : null}

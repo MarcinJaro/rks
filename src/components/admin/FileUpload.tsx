@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useRef, useState } from "react";
+import { ChangeEvent, useId, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -19,6 +19,8 @@ export function FileUpload({
   onUploaded: (ids: Id<"_storage">[]) => void;
 }) {
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
+  const inputId = useId();
+  const statusId = `${inputId}-status`;
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,21 +82,32 @@ export function FileUpload({
   }
 
   return (
-    <div className="grid gap-1 text-sm font-bold">
-      {label}
+    <div className="grid gap-2">
+      <label htmlFor={inputId} className="text-sm font-bold text-navy">
+        {label}
+      </label>
       <input
+        id={inputId}
         ref={inputRef}
         type="file"
         accept={accept}
         multiple={multiple}
         onChange={handleChange}
         disabled={busy}
-        className="text-sm font-normal file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-bold file:text-secondary-foreground"
+        aria-describedby={busy || error ? statusId : undefined}
+        aria-invalid={error ? true : undefined}
+        className="min-h-11 w-full rounded-lg border border-[#7b8b9c] bg-background p-1.5 text-sm font-normal text-[#46586b] outline-none transition-[border-color,box-shadow] file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-bold file:text-secondary-foreground focus:border-secondary focus:ring-3 focus:ring-secondary/15 disabled:cursor-not-allowed disabled:opacity-60"
       />
       {busy ? (
-        <p className="text-xs font-normal text-muted-foreground">Wysyłanie…</p>
+        <p id={statusId} role="status" className="text-xs font-normal text-muted-foreground">
+          Wysyłanie...
+        </p>
       ) : null}
-      {error ? <p className="text-xs font-bold text-red-300">{error}</p> : null}
+      {error ? (
+        <p id={statusId} role="alert" className="text-xs font-bold text-[#a61b1b]">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

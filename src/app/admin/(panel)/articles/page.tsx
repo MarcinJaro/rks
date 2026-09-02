@@ -278,7 +278,7 @@ export default function AdminArticlesPage() {
                 onChange={(event) => set("teamId", event.target.value)}
                 className={inputClass}
               >
-                <option value="">— brak —</option>
+                <option value="">Brak przypisania</option>
                 {teams.map((team) => (
                   <option key={team._id} value={team._id}>
                     {team.name}
@@ -336,7 +336,7 @@ export default function AdminArticlesPage() {
               />
               {uploadedImageId ? (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Zdjęcie wysłane — zapisze się po kliknięciu &quot;Zapisz&quot;.
+                  Zdjęcie wysłane. Zapisze się po kliknięciu &quot;Zapisz&quot;.
                 </p>
               ) : null}
             </div>

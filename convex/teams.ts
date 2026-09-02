@@ -94,8 +94,40 @@ export const upsert = mutation({
   },
 });
 
+const adminCoachValidator = v.object({
+  _id: v.id("people"),
+  _creationTime: v.number(),
+  name: v.string(),
+  role: v.literal("trener"),
+  position: v.optional(v.string()),
+  photoStorageId: v.optional(v.id("_storage")),
+  teamId: v.optional(v.id("teams")),
+  qualifications: v.optional(v.string()),
+  bio: v.optional(v.string()),
+  sortOrder: v.number(),
+});
+
 export const adminList = query({
   args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("teams"),
+      _creationTime: v.number(),
+      name: v.string(),
+      slug: v.string(),
+      yearGroup: v.optional(v.number()),
+      league: v.optional(v.string()),
+      groupPhotoId: v.optional(v.id("_storage")),
+      coachId: v.optional(v.id("people")),
+      schedule: v.optional(v.string()),
+      description: v.optional(v.string()),
+      isActive: v.boolean(),
+      sortOrder: v.number(),
+      groupPhotoUrl: v.union(v.string(), v.null()),
+      coach: v.union(adminCoachValidator, v.null()),
+      coaches: v.array(adminCoachValidator),
+    }),
+  ),
   handler: async (ctx) => {
     await requireAdmin(ctx);
     const teams = await ctx.db
@@ -103,14 +135,44 @@ export const adminList = query({
       .withIndex("by_sortOrder")
       .order("asc")
       .collect();
+    const trainerRows = await ctx.db
+      .query("people")
+      .withIndex("by_role", (q) => q.eq("role", "trener"))
+      .order("asc")
+      .take(501);
+    if (trainerRows.length > 500) {
+      throw new Error(
+        "Lista trenerów przekroczyła limit 500 rekordów. Użyj paginowanego widoku ludzi.",
+      );
+    }
+    const trainers = trainerRows.map((person) => ({
+      ...person,
+      role: "trener" as const,
+    }));
     return await Promise.all(
-      teams.map(async (team) => ({
-        ...team,
-        groupPhotoUrl: team.groupPhotoId
-          ? await ctx.storage.getUrl(team.groupPhotoId)
-          : null,
-        coach: team.coachId ? await ctx.db.get(team.coachId) : null,
-      })),
+      teams.map(async (team) => {
+        const linkedCoaches = trainers.filter(
+          (person) => person.teamId === team._id,
+        );
+        const legacyCoach = team.coachId
+          ? trainers.find((person) => person._id === team.coachId) ?? null
+          : null;
+        const teamCoaches = legacyCoach
+          ? [
+              legacyCoach,
+              ...linkedCoaches.filter((person) => person._id !== legacyCoach._id),
+            ]
+          : linkedCoaches;
+
+        return {
+          ...team,
+          groupPhotoUrl: team.groupPhotoId
+            ? await ctx.storage.getUrl(team.groupPhotoId)
+            : null,
+          coach: legacyCoach ?? linkedCoaches[0] ?? null,
+          coaches: teamCoaches,
+        };
+      }),
     );
   },
 });

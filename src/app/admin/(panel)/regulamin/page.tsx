@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { Download, Trash2 } from "lucide-react";
+import { Download, LockKeyhole, Trash2 } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,20 @@ function consentSummary(item: {
 /** RFC 4180: cudzysłowy podwajamy, całość opakowujemy w cudzysłów. */
 function csvCell(value: string) {
   return `"${value.replaceAll('"', '""')}"`;
+}
+
+function SensitiveValue({ value, label }: { value?: string; label: string }) {
+  if (!value) return <span className="text-muted-foreground">Brak</span>;
+
+  return (
+    <details className="group inline-block">
+      <summary className="inline-flex min-h-9 cursor-pointer list-none items-center gap-1.5 rounded-md bg-[#fff4e5] px-2 py-1 text-xs font-bold text-[#7a4900] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary">
+        <LockKeyhole aria-hidden="true" size={12} />
+        Pokaż {label}
+      </summary>
+      <span className="mt-1 block font-mono text-xs text-navy">{value}</span>
+    </details>
+  );
 }
 
 export default function AdminRegulationPage() {
@@ -121,22 +135,25 @@ export default function AdminRegulationPage() {
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-white">
+          <h1 className="text-3xl font-black text-navy">
             Akceptacje regulaminu
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {acceptances.length} zgód złożonych przez rodziców.
           </p>
         </div>
-        <div className="flex gap-2">
-          <input
-            className={inputClass}
-            placeholder="Szukaj dziecka lub rodzica"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <label className="min-w-0 sm:w-72">
+            <span className="sr-only">Szukaj dziecka lub rodzica</span>
+            <input
+              className={inputClass}
+              placeholder="Szukaj dziecka lub rodzica"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
           <Button onClick={handleExport} disabled={!filtered.length}>
-            <Download size={18} />
+            <Download aria-hidden="true" size={18} />
             Eksport CSV
           </Button>
         </div>
@@ -149,37 +166,40 @@ export default function AdminRegulationPage() {
           Brak zgód do wyświetlenia.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-md border border-border">
+        <div
+          role="region"
+          aria-label="Akceptacje regulaminu. Tabelę można przewijać poziomo."
+          tabIndex={0}
+          className="overflow-x-auto rounded-lg border border-border bg-card outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-secondary"
+        >
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="bg-muted text-xs font-black uppercase text-muted-foreground">
               <tr>
-                <th className="px-4 py-3">Dziecko</th>
-                <th className="px-4 py-3">Rocznik</th>
-                <th className="px-4 py-3">PESEL</th>
-                <th className="px-4 py-3">Rodzic</th>
-                <th className="px-4 py-3">Kontakt</th>
-                <th className="px-4 py-3">Wersja</th>
-                <th className="px-4 py-3">Data</th>
-                <th className="px-4 py-3" />
+                <th scope="col" className="px-4 py-3">Dziecko</th>
+                <th scope="col" className="px-4 py-3">Rocznik</th>
+                <th scope="col" className="px-4 py-3">PESEL</th>
+                <th scope="col" className="px-4 py-3">Rodzic</th>
+                <th scope="col" className="px-4 py-3">Kontakt</th>
+                <th scope="col" className="px-4 py-3">Wersja</th>
+                <th scope="col" className="px-4 py-3">Data</th>
+                <th scope="col" className="px-4 py-3"><span className="sr-only">Akcje</span></th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((item) => (
                 <tr key={item._id} className="border-t border-border">
-                  <td className="px-4 py-3 font-bold text-white">
+                  <th scope="row" className="px-4 py-3 text-left font-bold text-navy">
                     {item.childName}
-                  </td>
+                  </th>
                   <td className="px-4 py-3 text-muted-foreground">
                     {item.childYearGroup}
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {item.childPesel ?? "—"}
+                  <td className="px-4 py-3">
+                    <SensitiveValue value={item.childPesel} label="PESEL dziecka" />
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    <span className="block">{item.parentName}</span>
-                    {item.parentPesel ? (
-                      <span className="block text-xs">{item.parentPesel}</span>
-                    ) : null}
+                  <td className="px-4 py-3 text-navy">
+                    <span className="mb-1 block font-semibold">{item.parentName}</span>
+                    <SensitiveValue value={item.parentPesel} label="PESEL opiekuna" />
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     <span className="block">{item.parentEmail}</span>
@@ -200,7 +220,7 @@ export default function AdminRegulationPage() {
                       aria-label={`Usuń zgodę dla ${item.childName}`}
                       onClick={() => handleRemove(item._id, item.childName)}
                     >
-                      <Trash2 size={16} />
+                      <Trash2 aria-hidden="true" size={16} />
                     </Button>
                   </td>
                 </tr>

@@ -90,3 +90,93 @@ a {
   background: var(--hero-panel);
   box-shadow: 0 24px 80px rgb(0 0 0 / 0.22);
 }
+
+/* Jasna warstwa produktowa panelu. Publiczny serwis zachowuje ciemną paletę
+   klubową, a semantyczne tokeny Tailwinda dziedziczą się tylko w tym shellu. */
+.admin-shell {
+  --background: #f8fafc;
+  --foreground: #17283a;
+  --muted: #eef2f6;
+  --muted-foreground: #5f6e80;
+  --card: #ffffff;
+  --border: #dce3eb;
+  --section: #ffffff;
+  --section-alt: #f7f9fb;
+  --surface-raised: #edf2f7;
+  --primary: #d8ff3e;
+  --primary-foreground: #10263b;
+  --secondary: #234f78;
+  --secondary-foreground: #ffffff;
+  --accent: #315f89;
+  --accent-foreground: #ffffff;
+  --navy: #14263a;
+  color-scheme: light;
+  overflow-x: clip;
+}
+
+.admin-content :where(section.bg-card, article.bg-card, div.bg-card) {
+  box-shadow:
+    0 1px 2px rgb(16 42 67 / 0.035),
+    0 8px 24px rgb(16 42 67 / 0.035);
+}
+
+.admin-content :where(h1, h2, h3) {
+  letter-spacing: -0.025em;
+}
+
+.admin-content :where(input[type="checkbox"], input[type="radio"]) {
+  accent-color: #234f78;
+}
+
+.admin-content :where(input, textarea, select) {
+  border-color: #7b8b9c;
+}
+
+.admin-content :where(input::placeholder, textarea::placeholder) {
+  color: #5f6e80;
+  opacity: 1;
+}
+
+.admin-content .text-red-300 {
+  color: #b42318;
+}
+
+.admin-content .text-primary {
+  color: #5d7600;
+}
+
+.admin-content .border-primary {
+  border-color: #9fbd2b;
+}
+
+.admin-shell [data-slot="button"].hover\:text-primary:hover {
+  color: #234f78;
+}
+
+.admin-content .bg-primary\/15 {
+  background-color: rgb(216 255 62 / 0.28);
+}
+
+.admin-content .bg-red-500\/15,
+.admin-content .bg-red-500\/10 {
+  background-color: #fef3f2;
+}
+
+.admin-content .border-red-500\/40 {
+  border-color: #f4c7c3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  .admin-shell *,
+  .admin-shell *::before,
+  .admin-shell *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

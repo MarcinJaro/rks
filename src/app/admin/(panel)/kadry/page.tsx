@@ -235,7 +235,7 @@ export default function AdminSquadsPage() {
                 onChange={(event) => set("teamId", event.target.value)}
                 className={inputClass}
               >
-                <option value="">— wybierz —</option>
+                <option value="">Wybierz drużynę</option>
                 {teams.map((team) => (
                   <option key={team._id} value={team._id}>
                     {team.name}
@@ -299,7 +299,7 @@ export default function AdminSquadsPage() {
               onChange={(event) => setBulkTeamId(event.target.value)}
               className={inputClass}
             >
-              <option value="">— wybierz —</option>
+              <option value="">Wybierz drużynę</option>
               {teams.map((team) => (
                 <option key={team._id} value={team._id}>
                   {team.name}
@@ -385,7 +385,7 @@ export default function AdminSquadsPage() {
                     />
                   ) : (
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-xs font-black text-muted-foreground">
-                      {player.number || "—"}
+                      {player.number || "Brak"}
                     </div>
                   )}
                   <div className="min-w-0 flex-1">

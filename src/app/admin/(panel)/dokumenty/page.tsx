@@ -107,7 +107,7 @@ export default function AdminDocumentsPage() {
             />
             {fileStorageId ? (
               <p className="mt-1 text-xs text-muted-foreground">
-                Plik wysłany — zapisze się po kliknięciu &quot;Zapisz&quot;.
+                Plik wysłany. Zapisze się po kliknięciu &quot;Zapisz&quot;.
               </p>
             ) : null}
           </div>

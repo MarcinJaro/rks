@@ -8,7 +8,7 @@ export function FbSyncStatus() {
   if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
     return (
       <StatusCard tone="muted">
-        Brak konfiguracji Convex (NEXT_PUBLIC_CONVEX_URL) — synchronizacja
+        Brak konfiguracji Convex (NEXT_PUBLIC_CONVEX_URL). Synchronizacja
         z Facebookiem jest nieaktywna, strona pokazuje posty zastępcze.
       </StatusCard>
     );
@@ -42,7 +42,7 @@ function LiveStatus() {
 
   return (
     <StatusCard tone="ok">
-      <strong>Ostatnia synchronizacja OK</strong> ({when}) — nowe:{" "}
+      <strong>Ostatnia synchronizacja OK</strong> ({when}), nowe:{" "}
       {status.created}, zaktualizowane: {status.updated}, błędy postów:{" "}
       {status.errors}.
     </StatusCard>

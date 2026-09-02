@@ -166,7 +166,7 @@ export default function AdminFacebookPostsPage() {
                     }
                     className="rounded-md border border-border bg-background px-2 py-1.5 text-sm font-normal"
                   >
-                    <option value="">— kategoria —</option>
+                    <option value="">Wybierz kategorię</option>
                     {categoryOptions.map((category) => (
                       <option key={category} value={category}>
                         {category}
@@ -187,7 +187,7 @@ export default function AdminFacebookPostsPage() {
                     }
                     className="rounded-md border border-border bg-background px-2 py-1.5 text-sm font-normal"
                   >
-                    <option value="">— drużyna —</option>
+                    <option value="">Wybierz drużynę</option>
                     {(teams ?? []).map((team) => (
                       <option key={team._id} value={team._id}>
                         {team.name}
@@ -201,7 +201,7 @@ export default function AdminFacebookPostsPage() {
         ))}
         {posts && posts.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Brak postów — uruchom synchronizację powyżej.
+            Brak postów. Uruchom synchronizację powyżej.
           </p>
         ) : null}
       </div>

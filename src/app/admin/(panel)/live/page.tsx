@@ -16,7 +16,7 @@ const statusLabels: Record<string, string> = {
 };
 
 function formatDate(timestamp?: number) {
-  if (!timestamp) return "—";
+  if (!timestamp) return "Brak";
   return new Intl.DateTimeFormat("pl-PL", {
     day: "2-digit",
     month: "2-digit",
@@ -64,7 +64,7 @@ export default function AdminLivePage() {
       setTitle("");
       setYoutubeUrl("");
       setMatchId("");
-      setMessage("Transmisja dodana — możesz ją rozpocząć poniżej");
+      setMessage("Transmisja dodana. Możesz ją rozpocząć poniżej");
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -124,7 +124,7 @@ export default function AdminLivePage() {
       <h1 className="text-3xl font-black text-navy">Transmisja live</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         Wklej link z YouTube (tam streamuje kamera VEO), sprawdź podgląd i
-        rozpocznij transmisję — sekcja &ldquo;Mecz live&rdquo; pojawi się na
+        rozpocznij transmisję. Sekcja &ldquo;Mecz live&rdquo; pojawi się na
         stronie głównej automatycznie.
       </p>
 
@@ -147,7 +147,7 @@ export default function AdminLivePage() {
             <input
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="RKS Okęcie — Znicz II Pruszków"
+              placeholder="RKS Okęcie vs Znicz II Pruszków"
               className="rounded-md border border-border bg-background px-3 py-2 font-normal"
             />
           </label>
@@ -167,10 +167,10 @@ export default function AdminLivePage() {
               onChange={(event) => setMatchId(event.target.value)}
               className="rounded-md border border-border bg-background px-3 py-2 font-normal"
             >
-              <option value="">— bez powiązania —</option>
+              <option value="">Bez powiązania</option>
               {matchOptions.map((match) => (
                 <option key={match._id} value={match._id}>
-                  {match.homeTeam} — {match.awayTeam} ({formatDate(match.date)})
+                  {match.homeTeam} vs {match.awayTeam} ({formatDate(match.date)})
                 </option>
               ))}
             </select>
@@ -222,7 +222,7 @@ export default function AdminLivePage() {
                       onClick={() =>
                         run(
                           () => startStream({ id: stream._id }),
-                          "Transmisja włączona — sekcja live jest na stronie głównej",
+                          "Transmisja włączona. Sekcja live jest na stronie głównej",
                         )
                       }
                     >
@@ -266,10 +266,10 @@ export default function AdminLivePage() {
                         }
                         className="rounded-md border border-border bg-background px-2 py-1.5 text-sm font-normal"
                       >
-                        <option value="">— wybierz mecz —</option>
+                        <option value="">Wybierz mecz</option>
                         {matchOptions.map((match) => (
                           <option key={match._id} value={match._id}>
-                            {match.homeTeam} — {match.awayTeam} (
+                            {match.homeTeam} vs {match.awayTeam} (
                             {formatDate(match.date)})
                           </option>
                         ))}
@@ -314,7 +314,7 @@ export default function AdminLivePage() {
           ))}
           {streams && streams.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Brak transmisji — dodaj pierwszą powyżej.
+              Brak transmisji. Dodaj pierwszą powyżej.
             </p>
           ) : null}
         </div>

@@ -197,7 +197,7 @@ export default function AdminTeamsPage() {
                 onChange={(event) => set("coachId", event.target.value)}
                 className={inputClass}
               >
-                <option value="">— brak —</option>
+                <option value="">Brak przypisania</option>
                 {(coaches ?? []).map((coach) => (
                   <option key={coach._id} value={coach._id}>
                     {coach.name}
@@ -327,10 +327,12 @@ export default function AdminTeamsPage() {
                 {[
                   team.yearGroup ? `rocznik ${team.yearGroup}` : null,
                   team.league,
-                  team.coach ? `trener: ${team.coach.name}` : null,
+                  team.coaches.length
+                    ? `trenerzy: ${team.coaches.map((coach) => coach.name).join(", ")}`
+                    : null,
                 ]
                   .filter(Boolean)
-                  .join(" · ") || "—"}
+                  .join(" · ") || "Brak dodatkowych informacji"}
               </p>
             </div>
             <span
@@ -377,7 +379,7 @@ export default function AdminTeamsPage() {
         ))}
         {teams && teams.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Brak drużyn — dodaj pierwszą.
+            Brak drużyn. Dodaj pierwszą.
           </p>
         ) : null}
       </div>

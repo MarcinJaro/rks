@@ -133,7 +133,7 @@ export function TeamSources({ teamId }: { teamId: Id<"teams"> }) {
 
         {sources && sources.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Brak źródeł — dodaj pierwsze poniżej.
+            Brak źródeł. Dodaj pierwsze poniżej.
           </p>
         ) : null}
 
