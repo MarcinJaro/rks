@@ -70,3 +70,46 @@ Settings → Domains:
 - robots.txt: Allow / + Disallow /admin + wskazuje sitemap na rksokecie.pl.
 - sitemap.xml i canonical: pełne adresy https://rksokecie.pl (gotowe na domenę).
 - Status 308 (trwałe) - równoważne 301 dla SEO.
+
+## Clerk: migracja na instancję produkcyjną (2026-09-02)
+
+Stan zastany: produkcja (rksokecie.pl) używała instancji DEWELOPERSKIEJ
+Clerka (`pk_test_`, issuer noble-lizard-59.clerk.accounts.dev, otwarta
+rejestracja). Zrobione przez Platform API (`clerk` CLI, konto
+marcin@creativerebels.pl):
+
+- Instancja produkcyjna: `ins_3ImsknPVJmVDf5mmKxUstt2dkeY`, domena
+  rksokecie.pl, frontend API https://clerk.rksokecie.pl (DNS/SSL/mail:
+  complete). 5 CNAME w Cloudflare (clerk, accounts, clkmail, clk._domainkey,
+  clk2._domainkey) bez proxy - UWAGA: cele mail/DKIM instancji różnią się od
+  tych z domain_intent (32vpeprq60ew vs kero20dtgss8) - poprawione.
+- Szablon JWT `convex` z claimem `email` (wymagany przez ADMIN_EMAILS).
+- `sign_up_mode = restricted` na PROD i DEV (audyt: otwarta rejestracja).
+- Admin na prod: jaroszewicz.marcin84@gmail.com (`user_3ImtriwBEtm68WW0E7aEjVNdsw9`),
+  logowanie kodem mailowym lub hasłem. Zgodny z ADMIN_EMAILS na Convex prod.
+- Convex prod: `convex/auth.config.ts` czyta CLERK_JWT_ISSUER_DOMAIN
+  (= https://clerk.rksokecie.pl) ORAZ CLERK_JWT_ISSUER_DOMAIN_LEGACY
+  (= dev), więc oba tokeny są ważne w trakcie przełączania.
+
+### Do zrobienia (wymaga konta Vercel `marcinjaro`, projekt `rks`)
+1. Settings → Environment Variables (Production):
+   - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = klucz `pk_live_...` instancji prod
+   - CLERK_SECRET_KEY = klucz `sk_live_...` (pobierz: `clerk env pull
+     --app app_3HQ7z1uv1FL1SnL0nSVW2perpP7 --instance
+     ins_3ImsknPVJmVDf5mmKxUstt2dkeY --file /tmp/clerk-prod.env`)
+2. Redeploy produkcji.
+3. Weryfikacja: /admin/sign-in ładuje z clerk.rksokecie.pl, logowanie kodem
+   na jaroszewicz.marcin84@gmail.com, panel działa.
+4. Po stabilizacji: `npx convex env remove CLERK_JWT_ISSUER_DOMAIN_LEGACY --prod`.
+5. Google OAuth na prod nieskonfigurowany (wymaga własnego OAuth clienta) -
+   niepotrzebny, logowanie mailowe wystarcza.
+
+## Legacy - KOREKTA po rozmowie z klientem
+`legacy.rksokecie.pl` ma pokazywać Drupala działającego do 1.09, NIE
+rksokecie.ayz.pl (to inny, dużo starszy serwis - zostaje bez zmian). Stary
+serwer 185.208.164.60 nadal serwuje tego Drupala pod hostem `rksokecie.pl`
+(HTTPS 200, 85 KB; 143 linki względne vs 18 absolutnych - nawigacja zadziała).
+Origin Rule w Cloudflare: Hostname eq legacy.rksokecie.pl → Host Header
+Override = `rksokecie.pl`. DNS (A, proxied) i Transform Rule noindex już są.
+Token CF z 2026-09-02 ma tylko Zone.DNS - Config Rules trzeba dodać albo
+kliknąć w dashboardzie.
