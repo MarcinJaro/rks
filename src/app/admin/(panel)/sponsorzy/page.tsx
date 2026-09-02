@@ -13,6 +13,7 @@ import { errorMessage } from "@/lib/convexError";
 type FormState = {
   name: string;
   url: string;
+  label: string;
   type: "sponsor" | "partner";
   logoStorageId: Id<"_storage"> | "";
 };
@@ -20,6 +21,7 @@ type FormState = {
 const emptyForm: FormState = {
   name: "",
   url: "",
+  label: "",
   type: "sponsor",
   logoStorageId: "",
 };
@@ -38,6 +40,8 @@ export default function AdminSponsorsPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [existingLogoUrl, setExistingLogoUrl] = useState<string | null>(null);
+  const [logoRemoved, setLogoRemoved] = useState(false);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -78,26 +82,28 @@ export default function AdminSponsorsPage() {
     setBusy(true);
     try {
       if (editingId === "new") {
-        if (!form.logoStorageId) {
-          throw new Error("Dodaj logo — jest wymagane");
-        }
         await createSponsor({
           name: form.name,
           url: form.url || undefined,
+          label: form.label || undefined,
           type: form.type,
-          logoStorageId: form.logoStorageId,
+          logoStorageId: form.logoStorageId || undefined,
         });
       } else if (editingId) {
         await updateSponsor({
           id: editingId,
           name: form.name,
           url: form.url || null,
+          label: form.label || null,
           type: form.type,
-          logoStorageId: form.logoStorageId || undefined,
+          logoStorageId:
+            form.logoStorageId || (logoRemoved ? null : undefined),
         });
       }
       setEditingId(null);
       setForm(emptyForm);
+      setExistingLogoUrl(null);
+      setLogoRemoved(false);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -119,6 +125,8 @@ export default function AdminSponsorsPage() {
             setForm(emptyForm);
             setEditingId("new");
             setError(null);
+            setExistingLogoUrl(null);
+            setLogoRemoved(false);
           }}
         >
           Dodaj sponsora
@@ -159,15 +167,48 @@ export default function AdminSponsorsPage() {
                 <option value="partner">Partner</option>
               </select>
             </Field>
+            <Field label="Etykieta (opcjonalnie)">
+              <input
+                value={form.label}
+                onChange={(event) => set("label", event.target.value)}
+                placeholder="np. Partner techniczny"
+                className={inputClass}
+              />
+            </Field>
             <div className="md:col-span-2">
+              {existingLogoUrl && !logoRemoved && !form.logoStorageId ? (
+                <div className="mb-3 flex items-center gap-3">
+                  <Image
+                    src={existingLogoUrl}
+                    alt="Aktualne logo"
+                    width={80}
+                    height={40}
+                    className="h-10 w-20 rounded bg-white object-contain p-1"
+                  />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setLogoRemoved(true)}
+                  >
+                    Usuń logo
+                  </Button>
+                </div>
+              ) : null}
+              {logoRemoved ? (
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Logo zostanie usunięte przy zapisie - na stronie pojawi się
+                  karta z nazwą i etykietą.
+                </p>
+              ) : null}
               <FileUpload
-                label="Logo (obraz, max 10 MB)"
+                label="Logo (obraz, max 10 MB; bez logo pokaże się karta tekstowa)"
                 accept="image/*"
                 onUploaded={(ids) => {
                   if (form.logoStorageId && form.logoStorageId !== ids[0]) {
                     void discardUpload(form.logoStorageId);
                   }
                   set("logoStorageId", ids[0]);
+                  setLogoRemoved(false);
                 }}
               />
             </div>
@@ -182,6 +223,8 @@ export default function AdminSponsorsPage() {
                 if (form.logoStorageId) void discardUpload(form.logoStorageId);
                 setEditingId(null);
                 setForm(emptyForm);
+                setExistingLogoUrl(null);
+                setLogoRemoved(false);
               }}
             >
               Anuluj
@@ -229,9 +272,20 @@ export default function AdminSponsorsPage() {
                       height={40}
                       className="h-10 w-20 rounded bg-white object-contain p-1"
                     />
-                  ) : null}
+                  ) : (
+                    <div className="grid h-10 w-20 place-items-center rounded bg-muted text-[10px] font-bold uppercase text-muted-foreground">
+                      Bez logo
+                    </div>
+                  )}
                   <div className="min-w-0 flex-1">
-                    <p className="font-black text-navy">{sponsor.name}</p>
+                    <p className="font-black text-navy">
+                      {sponsor.name}
+                      {sponsor.label ? (
+                        <span className="ml-2 text-xs font-bold uppercase text-muted-foreground">
+                          {sponsor.label}
+                        </span>
+                      ) : null}
+                    </p>
                     {sponsor.url ? (
                       <p className="truncate text-xs text-muted-foreground">
                         {sponsor.url}
@@ -246,9 +300,12 @@ export default function AdminSponsorsPage() {
                         setForm({
                           name: sponsor.name,
                           url: sponsor.url ?? "",
+                          label: sponsor.label ?? "",
                           type: sponsor.type,
                           logoStorageId: "",
                         });
+                        setExistingLogoUrl(sponsor.logoUrl ?? null);
+                        setLogoRemoved(false);
                         setEditingId(sponsor._id);
                         setError(null);
                       }}

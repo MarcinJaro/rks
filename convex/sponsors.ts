@@ -2,19 +2,32 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAdmin } from "./adminAuth";
 
-export const listByType = query({
-  args: { type: v.union(v.literal("sponsor"), v.literal("partner")) },
-  handler: async (ctx, { type }) => {
-    const sponsors = await ctx.db
-      .query("sponsors")
-      .withIndex("by_type", (q) => q.eq("type", type))
-      .order("asc")
-      .collect();
+/**
+ * Publiczny pasek "Sponsorzy i partnerzy": najpierw sponsorzy, potem
+ * partnerzy, w obrębie typu wg kolejności ustawionej w panelu.
+ */
+export const list = query({
+  args: {},
+  handler: async (ctx) => {
+    const byType = await Promise.all(
+      (["sponsor", "partner"] as const).map((type) =>
+        ctx.db
+          .query("sponsors")
+          .withIndex("by_type", (q) => q.eq("type", type))
+          .order("asc")
+          .take(100),
+      ),
+    );
 
     return await Promise.all(
-      sponsors.map(async (sponsor) => ({
-        ...sponsor,
-        logoUrl: await ctx.storage.getUrl(sponsor.logoStorageId),
+      byType.flat().map(async (sponsor) => ({
+        name: sponsor.name,
+        label: sponsor.label ?? null,
+        url: sponsor.url ?? null,
+        type: sponsor.type,
+        logoUrl: sponsor.logoStorageId
+          ? await ctx.storage.getUrl(sponsor.logoStorageId)
+          : null,
       })),
     );
   },
@@ -33,7 +46,9 @@ export const adminList = query({
     return await Promise.all(
       sponsors.map(async (sponsor) => ({
         ...sponsor,
-        logoUrl: await ctx.storage.getUrl(sponsor.logoStorageId),
+        logoUrl: sponsor.logoStorageId
+          ? await ctx.storage.getUrl(sponsor.logoStorageId)
+          : null,
       })),
     );
   },
@@ -42,7 +57,8 @@ export const adminList = query({
 export const create = mutation({
   args: {
     name: v.string(),
-    logoStorageId: v.id("_storage"),
+    logoStorageId: v.optional(v.id("_storage")),
+    label: v.optional(v.string()),
     url: v.optional(v.string()),
     type: sponsorType,
   },
@@ -63,7 +79,8 @@ export const update = mutation({
   args: {
     id: v.id("sponsors"),
     name: v.optional(v.string()),
-    logoStorageId: v.optional(v.id("_storage")),
+    logoStorageId: v.optional(v.union(v.id("_storage"), v.null())),
+    label: v.optional(v.union(v.string(), v.null())),
     url: v.optional(v.union(v.string(), v.null())),
     type: v.optional(sponsorType),
   },
@@ -71,7 +88,12 @@ export const update = mutation({
     await requireAdmin(ctx);
     const sponsor = await ctx.db.get(id);
     if (!sponsor) throw new Error("Nie znaleziono sponsora");
-    if (fields.logoStorageId && fields.logoStorageId !== sponsor.logoStorageId) {
+    // Logo podmienione lub skasowane - stary plik znika ze storage.
+    if (
+      sponsor.logoStorageId &&
+      fields.logoStorageId !== undefined &&
+      fields.logoStorageId !== sponsor.logoStorageId
+    ) {
       await ctx.storage.delete(sponsor.logoStorageId);
     }
 
@@ -102,7 +124,7 @@ export const removeSponsor = mutation({
     await requireAdmin(ctx);
     const sponsor = await ctx.db.get(id);
     if (!sponsor) return;
-    await ctx.storage.delete(sponsor.logoStorageId);
+    if (sponsor.logoStorageId) await ctx.storage.delete(sponsor.logoStorageId);
     await ctx.db.delete(id);
   },
 });

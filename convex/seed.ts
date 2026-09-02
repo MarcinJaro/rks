@@ -254,8 +254,9 @@ export const seedSponsors = internalMutation({
       v.object({
         name: v.string(),
         url: v.optional(v.string()),
+        label: v.optional(v.string()),
         type: v.union(v.literal("sponsor"), v.literal("partner")),
-        logoStorageId: v.id("_storage"),
+        logoStorageId: v.optional(v.id("_storage")),
       }),
     ),
   },
@@ -265,7 +266,7 @@ export const seedSponsors = internalMutation({
     let inserted = 0;
     for (const item of items) {
       if (existingNames.has(item.name)) {
-        await ctx.storage.delete(item.logoStorageId);
+        if (item.logoStorageId) await ctx.storage.delete(item.logoStorageId);
         continue;
       }
       const sameType = existing.filter((sponsor) => sponsor.type === item.type);

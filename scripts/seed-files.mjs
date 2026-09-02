@@ -32,8 +32,12 @@ async function upload(path, mime) {
 const sponsors = [
   { name: "iParts", url: "https://www.iparts.pl", type: "sponsor", file: "public/images/partners/iparts.png", mime: "image/png" },
   { name: "NIW", type: "partner", file: "public/images/partners/niw.png", mime: "image/png" },
-  { name: "Certyfikacja PZPN", type: "partner", file: "public/images/partners/pzpn-silver.png", mime: "image/png" },
+  { name: "Certyfikacja PZPN", label: "Program", type: "partner", file: "public/images/partners/pzpn-silver.png", mime: "image/png" },
   { name: "m.st. Warszawa", url: "https://um.warszawa.pl/", type: "partner", file: "public/images/partners/warszawa.jpg", mime: "image/jpeg" },
+  // Bez logo - na stronie renderują się jako karty tekstowe z etykietą.
+  { name: "NO10", url: "https://www.no10.pl/", label: "Partner techniczny", type: "partner" },
+  { name: "First Floor", type: "partner" },
+  { name: "Symbiosystem", url: "https://symbiosystem.pl", type: "partner" },
 ];
 
 const documents = [
@@ -50,7 +54,9 @@ console.log(`Cel: ${prodFlag ? "PROD" : "dev"}`);
 console.log("Sponsorzy:");
 const sponsorItems = [];
 for (const { file, mime, ...rest } of sponsors) {
-  sponsorItems.push({ ...rest, logoStorageId: await upload(file, mime) });
+  sponsorItems.push(
+    file ? { ...rest, logoStorageId: await upload(file, mime) } : rest,
+  );
 }
 console.log(convexRun("seed:seedSponsors", { items: sponsorItems }));
 

@@ -255,7 +255,9 @@ export default defineSchema({
 
   sponsors: defineTable({
     name: v.string(),
-    logoStorageId: v.id("_storage"),
+    // Brak logo = karta tekstowa z nazwą i etykietą (np. "Partner techniczny").
+    logoStorageId: v.optional(v.id("_storage")),
+    label: v.optional(v.string()),
     url: v.optional(v.string()),
     type: v.union(v.literal("sponsor"), v.literal("partner")),
     sortOrder: v.number(),
