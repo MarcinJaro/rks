@@ -292,6 +292,27 @@ export const fanZoneSections = [
   },
 ];
 
+export const fanFriends = [
+  {
+    name: "PWKS Huragan Wołomin",
+    fullName: "Piłkarski Wołomiński Klub Sportowy Huragan Wołomin",
+    founded: "1923",
+    colors: "czarno-białe",
+    address: "Korsaka 4, 05-200 Wołomin",
+    phone: "(22) 787-59-26",
+    website: "http://www.huragan-wolomin.pl",
+    facebook:
+      "https://www.facebook.com/Wołomiński-Klub-Sportowy-Huragan-364269323701003",
+    crest: "/images/legacy/huragan-wolomin.jpg",
+    stadium: {
+      name: "Stadion OSiR w Wołominie",
+      capacity: "1 000 miejsc, w tym 574 siedzące",
+      floodlights: "brak",
+      pitch: "100 m × 62 m",
+    },
+  },
+];
+
 export const legacyDocuments = [
   ["Zgoda na pierwszy trening (Zawodnik Naborowy)", "/documents/zgoda-pierwszy-trening.pdf"],
   ["Deklaracja gry amatora", "/documents/deklaracja-gry-amatora.pdf"],

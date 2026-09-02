@@ -75,6 +75,11 @@ const nextConfig: NextConfig = {
         destination: "/kibice/historia",
         permanent: true,
       },
+      {
+        source: "/strefa-kibica/przyjaciele-okecia",
+        destination: "/kibice#przyjaciele",
+        permanent: true,
+      },
       { source: "/strefa-kibica", destination: "/kibice", permanent: true },
       {
         source: "/strefa-kibica/:path*",
