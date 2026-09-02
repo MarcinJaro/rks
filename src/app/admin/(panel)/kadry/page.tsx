@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
@@ -44,6 +44,16 @@ export default function AdminSquadsPage() {
   const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
   const [photoRemoved, setPhotoRemoved] = useState(false);
   const [bulkText, setBulkText] = useState("");
+  const editFormRef = useRef<HTMLElement | null>(null);
+
+  // Formularz edycji renderuje się na górze strony, a listy roczników
+  // potrafią być długie - bez przewinięcia kliknięcie „Edytuj" wygląda,
+  // jakby nic nie robiło.
+  useEffect(() => {
+    if (editingId) {
+      editFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [editingId]);
 
   const grouped = useMemo(() => {
     if (!teams) return [];
@@ -195,7 +205,10 @@ export default function AdminSquadsPage() {
       <Feedback error={error} message={message} />
 
       {editingId ? (
-        <section className="mt-6 rounded-lg border border-border bg-card p-5">
+        <section
+          ref={editFormRef}
+          className="mt-6 scroll-mt-6 rounded-lg border border-border bg-card p-5"
+        >
           <h2 className="text-lg font-black text-navy">
             {editingId === "new" ? "Nowy zawodnik" : "Edycja zawodnika"}
           </h2>
