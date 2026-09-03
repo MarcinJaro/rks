@@ -1,16 +1,34 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  ChevronDown,
+  ChevronUp,
+  ListPlus,
+  Search,
+  SearchX,
+  UserPlus,
+  UsersRound,
+} from "lucide-react";
+import { Suspense, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
+
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { AdminEditorDialog } from "@/components/admin/AdminEditorDialog";
-import { Button } from "@/components/ui/button";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { Field, Feedback, inputClass } from "@/components/admin/fields";
 import { FileUpload } from "@/components/admin/FileUpload";
-import { parseRosterList } from "@/lib/rosterList";
+import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/convexError";
+import { parseRosterList } from "@/lib/rosterList";
+import {
+  getRosterTeamGroup,
+  matchesRosterSearch,
+  rosterTeamGroups,
+} from "@/lib/rosterWorkspace";
 
 type FormState = {
   name: string;
@@ -26,7 +44,53 @@ const emptyForm: FormState = {
   photoStorageId: "",
 };
 
-export default function AdminSquadsPage() {
+function playerCountLabel(count: number) {
+  return `${count} ${count === 1 ? "zawodnik" : "zawodników"}`;
+}
+
+function playerInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return [parts[0]?.[0], parts.at(-1)?.[0]]
+    .filter(Boolean)
+    .join("")
+    .toLocaleUpperCase("pl-PL");
+}
+
+function RosterWorkspaceSkeleton() {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      className="mt-6"
+    >
+      <span className="sr-only">Wczytywanie kadr</span>
+      <div
+        aria-hidden="true"
+        className="h-24 animate-pulse rounded-xl border border-border bg-card motion-reduce:animate-none xl:hidden"
+      />
+      <div
+        aria-hidden="true"
+        className="mt-5 grid animate-pulse gap-5 motion-reduce:animate-none xl:mt-0 xl:grid-cols-[280px_minmax(0,1fr)]"
+      >
+        <div className="hidden h-[560px] rounded-xl border border-border bg-card xl:block" />
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="h-32 border-b border-border bg-[#f9fbfc]" />
+          <div className="h-20 border-b border-border bg-card" />
+          <div className="grid gap-px bg-border">
+            {[0, 1, 2, 3, 4].map((item) => (
+              <div key={item} className="h-20 bg-card" />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminSquadsWorkspace() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const players = useQuery(api.players.adminList);
   const teams = useQuery(api.teams.list, {});
   const createPlayer = useMutation(api.players.create);
@@ -39,36 +103,92 @@ export default function AdminSquadsPage() {
   const [editingId, setEditingId] = useState<Id<"players"> | "new" | null>(
     null,
   );
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [bulkTeamId, setBulkTeamId] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [bulkText, setBulkText] = useState("");
+  const [playerBusy, setPlayerBusy] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [uploadBusy, setUploadBusy] = useState(false);
-  const editorBusy = busy || uploadBusy;
+  const [reorderingId, setReorderingId] = useState<Id<"players"> | null>(null);
   const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
   const [photoRemoved, setPhotoRemoved] = useState(false);
-  const [bulkText, setBulkText] = useState("");
+  const [search, setSearch] = useState("");
   const [editorSession, setEditorSession] = useState(0);
   const activeEditorSessionRef = useRef(0);
+  const editorBusy = playerBusy || uploadBusy;
 
-  const grouped = useMemo(() => {
-    if (!teams) return [];
-    return teams.map((team) => ({
-      team,
-      items: (players ?? []).filter((player) => player.teamId === team._id),
-    }));
-  }, [teams, players]);
+  const rosterByTeam = useMemo(() => {
+    type Player = NonNullable<typeof players>[number];
+    const result = new Map<string, Player[]>();
 
+    for (const team of teams ?? []) result.set(team._id, []);
+    for (const player of players ?? []) {
+      const teamPlayers = result.get(player.teamId);
+      if (teamPlayers) teamPlayers.push(player);
+    }
+
+    return result;
+  }, [players, teams]);
+
+  const teamEntries = useMemo(
+    () =>
+      (teams ?? []).map((team) => ({
+        team,
+        items: rosterByTeam.get(team._id) ?? [],
+      })),
+    [rosterByTeam, teams],
+  );
+
+  const teamSections = useMemo(
+    () =>
+      rosterTeamGroups
+        .map((group) => ({
+          ...group,
+          entries: teamEntries.filter(
+            ({ team }) => getRosterTeamGroup(team) === group.key,
+          ),
+        }))
+        .filter((section) => section.entries.length > 0),
+    [teamEntries],
+  );
+
+  const requestedTeamSlug = searchParams.get("team");
+  const activeEntry =
+    teamEntries.find(({ team }) => team.slug === requestedTeamSlug) ??
+    teamEntries.find(({ items }) => items.length > 0) ??
+    teamEntries[0] ??
+    null;
+  const activeTeam = activeEntry?.team ?? null;
+  const activePlayers = activeEntry?.items ?? [];
+  const filteredPlayers = activePlayers.filter((player) =>
+    matchesRosterSearch(player, search),
+  );
   const bulkPreview = useMemo(() => parseRosterList(bulkText), [bulkText]);
+  const playersWithPhotos = activePlayers.filter(
+    (player) => Boolean(player.photoUrl),
+  ).length;
+  const hasSearch = search.trim().length > 0;
+  const loading = players === undefined || teams === undefined;
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  // form.photoStorageId trzyma WYŁĄCZNIE plik wgrany w tej sesji formularza -
-  // zapisane zdjęcie reprezentuje existingPhotoUrl. Dzięki temu sprzątanie
-  // nigdy nie skasuje pliku należącego do dokumentu.
+  function resetFeedback() {
+    setError(null);
+    setMessage(null);
+  }
+
+  function changeTeam(slug: string) {
+    setSearch("");
+    router.replace(`/admin/kadry?team=${encodeURIComponent(slug)}`, {
+      scroll: false,
+    });
+  }
+
   function removePendingUpload(storageId: Id<"_storage">) {
     void removeUpload({ storageId }).catch((err) => {
       setError(errorMessage(err));
@@ -87,14 +207,32 @@ export default function AdminSquadsPage() {
       for (const storageId of ids) removePendingUpload(storageId);
       return;
     }
-    if (form.photoStorageId && form.photoStorageId !== ids[0]) {
+    if (form.photoStorageId && form.photoStorageId !== nextPhotoId) {
       removePendingUpload(form.photoStorageId);
     }
     set("photoStorageId", nextPhotoId);
     setPhotoRemoved(false);
   }
 
-  function handleCancel() {
+  function openNewPlayer() {
+    if (!activeTeam) return;
+    setForm({ ...emptyForm, teamId: activeTeam._id });
+    setExistingPhotoUrl(null);
+    setPhotoRemoved(false);
+    beginEditorSession();
+    setEditingId("new");
+    resetFeedback();
+  }
+
+  function openBulkImport() {
+    if (!activeTeam) return;
+    setBulkTeamId(activeTeam._id);
+    setBulkText("");
+    setBulkOpen(true);
+    resetFeedback();
+  }
+
+  function handleEditorCancel() {
     const pendingPhotoId = form.photoStorageId;
     activeEditorSessionRef.current += 1;
     setEditingId(null);
@@ -105,27 +243,37 @@ export default function AdminSquadsPage() {
     if (pendingPhotoId) removePendingUpload(pendingPhotoId);
   }
 
+  function handleBulkCancel() {
+    setBulkOpen(false);
+    setBulkTeamId("");
+    setBulkText("");
+    setError(null);
+  }
+
   async function handleReorder(id: Id<"players">, direction: "up" | "down") {
+    if (hasSearch || reorderingId) return;
     resetFeedback();
+    setReorderingId(id);
     try {
       await reorder({ id, direction });
     } catch (err) {
       setError(errorMessage(err));
+    } finally {
+      setReorderingId(null);
     }
-  }
-
-  function resetFeedback() {
-    setError(null);
-    setMessage(null);
   }
 
   async function handleSave() {
     if (editorBusy) return;
     resetFeedback();
-    setBusy(true);
+    setPlayerBusy(true);
     activeEditorSessionRef.current += 1;
+    const wasNew = editingId === "new";
+    const savedName = form.name.trim();
+    const targetTeam = teams?.find((team) => team._id === form.teamId);
+
     try {
-      if (editingId === "new") {
+      if (wasNew) {
         if (!form.teamId) throw new Error("Wybierz drużynę");
         await createPlayer({
           name: form.name,
@@ -146,34 +294,50 @@ export default function AdminSquadsPage() {
               : {}),
         });
       }
+
       setEditingId(null);
       setForm(emptyForm);
       setExistingPhotoUrl(null);
       setPhotoRemoved(false);
+      setMessage(
+        wasNew
+          ? `Dodano zawodnika: ${savedName}.`
+          : `Zapisano zmiany: ${savedName}.`,
+      );
+      if (targetTeam) changeTeam(targetTeam.slug);
     } catch (err) {
       beginEditorSession();
-      setError(err instanceof Error ? err.message : "Coś poszło nie tak");
+      setError(errorMessage(err));
     } finally {
-      setBusy(false);
+      setPlayerBusy(false);
     }
   }
 
   async function handleBulkImport() {
-    if (busy) return;
+    if (bulkBusy) return;
     resetFeedback();
-    setBusy(true);
+    setBulkBusy(true);
+    const targetTeam = teams?.find((team) => team._id === bulkTeamId);
+
     try {
       if (!bulkTeamId) throw new Error("Wybierz drużynę do importu");
       const count = await createMany({
         teamId: bulkTeamId as Id<"teams">,
         entries: bulkPreview,
       });
-      setMessage(`Dodano ${count} zawodników`);
+      setBulkOpen(false);
       setBulkText("");
+      setBulkTeamId("");
+      setMessage(
+        `Dodano ${playerCountLabel(count)}${
+          targetTeam ? ` do drużyny ${targetTeam.name}` : ""
+        }.`,
+      );
+      if (targetTeam) changeTeam(targetTeam.slug);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Import się nie udał");
+      setError(errorMessage(err));
     } finally {
-      setBusy(false);
+      setBulkBusy(false);
     }
   }
 
@@ -188,48 +352,53 @@ export default function AdminSquadsPage() {
     }
     try {
       await removePlayer({ id });
+      setMessage(`Usunięto zawodnika: ${name}.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nie udało się usunąć");
+      setError(errorMessage(err));
     }
-  }
-
-  if (players === undefined || teams === undefined) {
-    return <p className="text-sm text-muted-foreground">Wczytywanie…</p>;
   }
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-black text-navy">Kadry</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Zawodnicy widoczni na stronach drużyn. Dopóki drużyna nie ma tu
-            żadnego wpisu, jej strona pokazuje komunikat o kadrze w
-            przygotowaniu.
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            setForm(emptyForm);
-            beginEditorSession();
-            setEditingId("new");
-            resetFeedback();
-          }}
-        >
-          Dodaj zawodnika
-        </Button>
-      </div>
+      <AdminPageHeader
+        title="Kadry"
+        description="Wybierz drużynę i zarządzaj tylko jej zawodnikami. Pusta kadra pozostawia na stronie drużyny komunikat o danych w przygotowaniu."
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={openBulkImport}
+              disabled={loading || !activeTeam}
+            >
+              <ListPlus aria-hidden="true" size={17} strokeWidth={1.8} />
+              Importuj listę
+            </Button>
+            <Button
+              type="button"
+              onClick={openNewPlayer}
+              disabled={loading || !activeTeam}
+            >
+              <UserPlus aria-hidden="true" size={17} strokeWidth={1.8} />
+              Dodaj zawodnika
+            </Button>
+          </>
+        }
+      />
 
-      <Feedback error={editingId ? null : error} message={message} />
+      <Feedback
+        error={editingId !== null || bulkOpen ? null : error}
+        message={message}
+      />
 
       <AdminEditorDialog
         open={editingId !== null}
-        onClose={handleCancel}
+        onClose={handleEditorCancel}
         title={editingId === "new" ? "Nowy zawodnik" : "Edycja zawodnika"}
         description={
           editingId === "new"
             ? "Dodaj zawodnika do wybranej drużyny."
-            : "Zmień dane zawodnika bez opuszczania listy kadry."
+            : "Zmień dane zawodnika bez opuszczania aktywnej kadry."
         }
         size="lg"
         busy={editorBusy}
@@ -238,7 +407,7 @@ export default function AdminSquadsPage() {
             <Button
               type="button"
               variant="ghost"
-              onClick={handleCancel}
+              onClick={handleEditorCancel}
               disabled={editorBusy}
             >
               Anuluj
@@ -246,9 +415,13 @@ export default function AdminSquadsPage() {
             <Button
               type="submit"
               form="player-editor-form"
-              disabled={editorBusy || !form.name}
+              disabled={editorBusy || !form.name || !form.teamId}
             >
-              {busy ? "Zapisywanie…" : uploadBusy ? "Wysyłanie…" : "Zapisz"}
+              {playerBusy
+                ? "Zapisywanie…"
+                : uploadBusy
+                  ? "Wysyłanie…"
+                  : "Zapisz"}
             </Button>
           </>
         }
@@ -269,6 +442,7 @@ export default function AdminSquadsPage() {
               <input
                 value={form.name}
                 onChange={(event) => set("name", event.target.value)}
+                autoComplete="name"
                 required
                 className={inputClass}
               />
@@ -290,10 +464,14 @@ export default function AdminSquadsPage() {
                 className={inputClass}
               >
                 <option value="">Wybierz drużynę</option>
-                {teams.map((team) => (
-                  <option key={team._id} value={team._id}>
-                    {team.name}
-                  </option>
+                {teamSections.map((section) => (
+                  <optgroup key={section.key} label={section.label}>
+                    {section.entries.map(({ team }) => (
+                      <option key={team._id} value={team._id}>
+                        {team.name}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </Field>
@@ -302,7 +480,7 @@ export default function AdminSquadsPage() {
                 <div className="mb-3 flex items-center gap-3">
                   <Image
                     src={existingPhotoUrl}
-                    alt="Aktualne zdjęcie"
+                    alt="Aktualne zdjęcie zawodnika"
                     width={48}
                     height={48}
                     className="h-12 w-12 rounded-full object-cover"
@@ -333,153 +511,501 @@ export default function AdminSquadsPage() {
         </form>
       </AdminEditorDialog>
 
-      <section className="mt-8 rounded-lg border border-border bg-card p-5">
-        <h2 className="text-lg font-black text-navy">Import listy</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Wklej kadrę - jeden zawodnik w linii. Numer na początku linii jest
-          opcjonalny, np. <code>10 Jan Kowalski</code>. Zdjęcia dodasz później
-          przy poszczególnych zawodnikach.
-        </p>
-        <div className="mt-4 grid gap-4 md:grid-cols-[240px_1fr]">
-          <Field label="Drużyna">
-            <select
-              value={bulkTeamId}
-              onChange={(event) => setBulkTeamId(event.target.value)}
-              className={inputClass}
+      <AdminEditorDialog
+        open={bulkOpen}
+        onClose={handleBulkCancel}
+        title="Import listy zawodników"
+        description="Wklej listę i dodaj całą kadrę do jednej drużyny."
+        size="md"
+        busy={bulkBusy}
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleBulkCancel}
+              disabled={bulkBusy}
             >
-              <option value="">Wybierz drużynę</option>
-              {teams.map((team) => (
-                <option key={team._id} value={team._id}>
-                  {team.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Lista zawodników">
-            <textarea
-              value={bulkText}
-              onChange={(event) => setBulkText(event.target.value)}
-              rows={6}
-              placeholder={
-                "1 Bartosz Golder\n10 Patryk Tarkowski\nKarol Nguyen"
+              Anuluj
+            </Button>
+            <Button
+              type="submit"
+              form="bulk-roster-form"
+              disabled={
+                bulkBusy || !bulkTeamId || bulkPreview.length === 0
               }
-              className={inputClass}
-            />
-          </Field>
-        </div>
-        <div className="mt-4 flex items-center gap-3">
-          <Button
-            onClick={handleBulkImport}
-            disabled={busy || !bulkTeamId || bulkPreview.length === 0}
+            >
+              {bulkBusy ? "Importowanie…" : "Importuj"}
+            </Button>
+          </>
+        }
+      >
+        <form
+          id="bulk-roster-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleBulkImport();
+          }}
+        >
+          <Feedback error={error} />
+          <fieldset
+            disabled={bulkBusy}
+            className="mt-4 grid min-w-0 gap-4 border-0 p-0"
           >
-            {busy
-              ? "Dodawanie…"
-              : `Dodaj ${bulkPreview.length || ""} zawodników`}
-          </Button>
-          {bulkPreview.length > 0 ? (
-            <p className="text-xs text-muted-foreground">
-              Rozpoznano {bulkPreview.length} linii
-              {bulkPreview.filter((entry) => entry.number).length > 0
-                ? `, w tym ${bulkPreview.filter((entry) => entry.number).length} z numerem`
-                : ""}
-              .
-            </p>
-          ) : null}
-        </div>
-      </section>
+            <Field label="Drużyna">
+              <select
+                value={bulkTeamId}
+                onChange={(event) => setBulkTeamId(event.target.value)}
+                required
+                className={inputClass}
+              >
+                <option value="">Wybierz drużynę</option>
+                {teamSections.map((section) => (
+                  <optgroup key={section.key} label={section.label}>
+                    {section.entries.map(({ team }) => (
+                      <option key={team._id} value={team._id}>
+                        {team.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </Field>
+            <Field label="Lista zawodników">
+              <textarea
+                value={bulkText}
+                onChange={(event) => setBulkText(event.target.value)}
+                rows={9}
+                placeholder={
+                  "1 Bartosz Golder\n10 Patryk Tarkowski\nKarol Nguyen"
+                }
+                className={inputClass}
+              />
+            </Field>
+          </fieldset>
+          <p
+            role="status"
+            aria-live="polite"
+            className="mt-3 text-xs leading-5 text-muted-foreground"
+          >
+            {bulkPreview.length > 0
+              ? `Rozpoznano ${bulkPreview.length} linii, w tym ${
+                  bulkPreview.filter((entry) => entry.number).length
+                } z numerem.`
+              : "Jeden zawodnik w linii. Numer na początku jest opcjonalny."}
+          </p>
+        </form>
+      </AdminEditorDialog>
 
-      {grouped.map(({ team, items }) => (
-        <section key={team._id} className="mt-8">
-          <h2 className="text-lg font-black text-navy">
-            {team.name}{" "}
-            <span className="text-sm font-bold text-muted-foreground">
-              ({items.length})
-            </span>
+      {loading ? (
+        <RosterWorkspaceSkeleton />
+      ) : teams.length === 0 ? (
+        <section className="mt-6 rounded-xl border border-border bg-card px-5 py-12 text-center">
+          <UsersRound
+            aria-hidden="true"
+            size={28}
+            strokeWidth={1.7}
+            className="mx-auto text-[#627286]"
+          />
+          <h2 className="mt-3 text-lg font-black text-navy">
+            Najpierw dodaj drużynę
           </h2>
-          {items.length === 0 ? (
-            <p className="mt-3 rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-              Brak zawodników w panelu.
-            </p>
-          ) : (
-            <div className="mt-3 grid gap-3">
-              {items.map((player, index) => (
-                <article
-                  key={player._id}
-                  className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-card p-4"
-                >
-                  <div className="flex flex-col gap-1">
-                    <button
-                      type="button"
-                      aria-label="Przesuń wyżej"
-                      disabled={index === 0}
-                      onClick={() => handleReorder(player._id, "up")}
-                      className="text-muted-foreground disabled:opacity-30"
-                    >
-                      ▲
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Przesuń niżej"
-                      disabled={index === items.length - 1}
-                      onClick={() => handleReorder(player._id, "down")}
-                      className="text-muted-foreground disabled:opacity-30"
-                    >
-                      ▼
-                    </button>
-                  </div>
-                  {player.photoUrl ? (
-                    <Image
-                      src={player.photoUrl}
-                      alt={player.name}
-                      width={48}
-                      height={48}
-                      className="h-12 w-12 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-xs font-black text-muted-foreground">
-                      {player.number || "Brak"}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="font-black text-navy">{player.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {player.number ? `Numer ${player.number}` : "Bez numeru"}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setForm({
-                          name: player.name,
-                          number: player.number ?? "",
-                          teamId: player.teamId,
-                          photoStorageId: "",
-                        });
-                        setExistingPhotoUrl(player.photoUrl ?? null);
-                        setPhotoRemoved(false);
-                        beginEditorSession();
-                        setEditingId(player._id);
-                        resetFeedback();
-                      }}
-                    >
-                      Edytuj
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleRemove(player._id, player.name)}
-                    >
-                      Usuń
-                    </Button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
+          <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">
+            Kadra zawsze należy do konkretnej drużyny. Utwórz ją w module
+            drużyn, a potem wróć tutaj.
+          </p>
+          <Button asChild variant="secondary" className="mt-5">
+            <Link href="/admin/druzyny">Przejdź do drużyn</Link>
+          </Button>
         </section>
-      ))}
+      ) : (
+        <div className="mt-6">
+          <section
+            aria-labelledby="mobile-team-selector"
+            className="rounded-xl border border-border bg-card p-4 xl:hidden"
+          >
+            <label
+              id="mobile-team-selector"
+              htmlFor="roster-team-select"
+              className="text-sm font-bold text-foreground"
+            >
+              Wybierz drużynę
+            </label>
+            <div className="relative mt-2">
+              <select
+                id="roster-team-select"
+                value={activeTeam?.slug ?? ""}
+                onChange={(event) => changeTeam(event.target.value)}
+                className={`${inputClass} appearance-none pr-10 font-bold text-navy`}
+              >
+                {teamSections.map((section) => (
+                  <optgroup key={section.key} label={section.label}>
+                    {section.entries.map(({ team, items }) => (
+                      <option key={team._id} value={team.slug}>
+                        {team.name} ({items.length})
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+              <ChevronDown
+                aria-hidden="true"
+                size={17}
+                strokeWidth={1.8}
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#627286]"
+              />
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Łącznie {playerCountLabel(players.length)} w {teams.length}{" "}
+              {teams.length === 1 ? "drużynie" : "drużynach"}.
+            </p>
+          </section>
+
+          <div className="mt-5 grid min-w-0 gap-5 xl:mt-0 xl:grid-cols-[280px_minmax(0,1fr)]">
+            <aside className="hidden self-start overflow-hidden rounded-xl border border-border bg-card xl:sticky xl:top-[100px] xl:block">
+              <div className="border-b border-border px-4 py-4">
+                <h2 className="text-sm font-black text-navy">
+                  Katalog drużyn
+                </h2>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {playerCountLabel(players.length)} w {teams.length}{" "}
+                  {teams.length === 1 ? "drużynie" : "drużynach"}
+                </p>
+              </div>
+              <nav
+                aria-label="Wybór kadry drużyny"
+                className="max-h-[calc(100dvh-250px)] overflow-y-auto p-3"
+              >
+                {teamSections.map((section) => (
+                  <div key={section.key} className="mt-4 first:mt-0">
+                    <p className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                      {section.label}
+                    </p>
+                    <div className="grid gap-1">
+                      {section.entries.map(({ team, items }) => {
+                        const active = team._id === activeTeam?._id;
+                        return (
+                          <button
+                            key={team._id}
+                            type="button"
+                            onClick={() => changeTeam(team.slug)}
+                            aria-current={active ? "page" : undefined}
+                            className={`grid min-h-11 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border-l-2 px-3 py-2 text-left text-sm transition-[background-color,border-color,color] ${
+                              active
+                                ? "border-secondary bg-[#eaf0f6] text-[#183f63]"
+                                : "border-transparent text-[#526275] hover:bg-[#f4f6f8] hover:text-navy"
+                            }`}
+                          >
+                            <span className="min-w-0">
+                              <span className="block truncate font-bold">
+                                {team.name}
+                              </span>
+                              {!team.isActive ? (
+                                <span className="mt-0.5 block text-[10px] font-semibold text-muted-foreground">
+                                  Drużyna ukryta
+                                </span>
+                              ) : null}
+                            </span>
+                            <span
+                              aria-label={playerCountLabel(items.length)}
+                              className={`min-w-7 rounded-md px-1.5 py-1 text-center font-mono text-[11px] font-bold tabular-nums ${
+                                active
+                                  ? "bg-white text-[#183f63]"
+                                  : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {items.length}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </nav>
+            </aside>
+
+            <section
+              aria-labelledby="active-roster-heading"
+              className="min-w-0 overflow-hidden rounded-xl border border-border bg-card"
+            >
+              <div className="border-b border-border bg-[#f9fbfc] px-4 py-4 sm:px-5 sm:py-5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-[#627286]">
+                      Wybrana drużyna
+                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <h2
+                        id="active-roster-heading"
+                        className="text-xl font-black text-navy sm:text-2xl"
+                      >
+                        {activeTeam?.name}
+                      </h2>
+                      {!activeTeam?.isActive ? (
+                        <span className="rounded-md bg-muted px-2 py-1 text-[10px] font-bold text-muted-foreground">
+                          Ukryta
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <span>
+                        <strong className="font-mono font-bold tabular-nums text-navy">
+                          {activePlayers.length}
+                        </strong>{" "}
+                        {activePlayers.length === 1
+                          ? "zawodnik"
+                          : "zawodników"}
+                      </span>
+                      <span>
+                        <strong className="font-mono font-bold tabular-nums text-navy">
+                          {playersWithPhotos}
+                        </strong>{" "}
+                        ze zdjęciem
+                      </span>
+                      <span>
+                        <strong className="font-mono font-bold tabular-nums text-navy">
+                          {activePlayers.length - playersWithPhotos}
+                        </strong>{" "}
+                        bez zdjęcia
+                      </span>
+                    </div>
+                  </div>
+
+                  {activePlayers.length > 0 ? (
+                    <Field label="Szukaj zawodnika">
+                      <div className="relative w-full lg:w-72">
+                        <Search
+                          aria-hidden="true"
+                          size={17}
+                          strokeWidth={1.8}
+                          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#627286]"
+                        />
+                        <input
+                          id="roster-search"
+                          type="search"
+                          value={search}
+                          onChange={(event) => setSearch(event.target.value)}
+                          placeholder="Nazwisko lub numer"
+                          className={`${inputClass} pl-10`}
+                        />
+                      </div>
+                    </Field>
+                  ) : null}
+                </div>
+                {hasSearch ? (
+                  <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                    Znaleziono {filteredPlayers.length} z {activePlayers.length}.
+                    Zmiana kolejności jest wyłączona podczas wyszukiwania.
+                  </p>
+                ) : null}
+              </div>
+
+              {activePlayers.length === 0 ? (
+                <div className="px-5 py-12 text-center">
+                  <UsersRound
+                    aria-hidden="true"
+                    size={28}
+                    strokeWidth={1.7}
+                    className="mx-auto text-[#627286]"
+                  />
+                  <h3 className="mt-3 text-base font-black text-navy">
+                    Ta drużyna nie ma jeszcze kadry
+                  </h3>
+                  <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">
+                    Jej publiczna strona pokazuje informację o kadrze w
+                    przygotowaniu. Możesz dodać jedną osobę albo wkleić całą
+                    listę.
+                  </p>
+                  <div className="mt-5 flex flex-wrap justify-center gap-2">
+                    <Button type="button" onClick={openNewPlayer}>
+                      <UserPlus
+                        aria-hidden="true"
+                        size={17}
+                        strokeWidth={1.8}
+                      />
+                      Dodaj zawodnika
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={openBulkImport}
+                    >
+                      <ListPlus
+                        aria-hidden="true"
+                        size={17}
+                        strokeWidth={1.8}
+                      />
+                      Importuj listę
+                    </Button>
+                  </div>
+                </div>
+              ) : filteredPlayers.length === 0 ? (
+                <div className="px-5 py-12 text-center">
+                  <SearchX
+                    aria-hidden="true"
+                    size={28}
+                    strokeWidth={1.7}
+                    className="mx-auto text-[#627286]"
+                  />
+                  <h3 className="mt-3 text-base font-black text-navy">
+                    Brak wyników
+                  </h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Spróbuj wpisać inne nazwisko albo numer.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSearch("")}
+                    className="mt-5"
+                  >
+                    Wyczyść wyszukiwanie
+                  </Button>
+                </div>
+              ) : (
+                <ol className="divide-y divide-border">
+                  {filteredPlayers.map((player) => {
+                    const playerIndex = activePlayers.findIndex(
+                      (item) => item._id === player._id,
+                    );
+                    const reorderDisabled = hasSearch || reorderingId !== null;
+
+                    return (
+                      <li
+                        key={player._id}
+                        className="grid min-w-0 grid-cols-[48px_minmax(0,1fr)] items-center gap-x-3 gap-y-3 px-4 py-3 sm:grid-cols-[52px_minmax(0,1fr)_auto] sm:px-5"
+                      >
+                        {player.photoUrl ? (
+                          <Image
+                            src={player.photoUrl}
+                            alt={player.name}
+                            width={52}
+                            height={52}
+                            className="h-12 w-12 rounded-full object-cover sm:h-[52px] sm:w-[52px]"
+                          />
+                        ) : (
+                          <div
+                            role="img"
+                            aria-label={`Brak zdjęcia: ${player.name}`}
+                            className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-xs font-black text-[#526275] sm:h-[52px] sm:w-[52px]"
+                          >
+                            {playerInitials(player.name)}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="truncate font-black text-navy">
+                            {player.name}
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {player.number
+                              ? `Numer ${player.number}`
+                              : "Bez numeru"}
+                            {hasSearch ? "" : `, pozycja ${playerIndex + 1}`}
+                          </p>
+                        </div>
+                        <div className="col-span-2 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 sm:col-span-1 sm:justify-end sm:border-0 sm:pt-0">
+                          <div
+                            role="group"
+                            aria-label={`Kolejność: ${player.name}`}
+                            className="flex gap-1"
+                          >
+                            <button
+                              type="button"
+                              aria-label={`Przesuń wyżej: ${player.name}`}
+                              disabled={reorderDisabled || playerIndex === 0}
+                              onClick={() =>
+                                handleReorder(player._id, "up")
+                              }
+                              className="grid h-10 w-10 place-items-center rounded-lg border border-border bg-card text-[#526275] transition-[background-color,border-color,color] hover:border-[#aebbc8] hover:bg-muted hover:text-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:pointer-events-none disabled:opacity-35"
+                            >
+                              <ChevronUp
+                                aria-hidden="true"
+                                size={17}
+                                strokeWidth={2}
+                              />
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`Przesuń niżej: ${player.name}`}
+                              disabled={
+                                reorderDisabled ||
+                                playerIndex === activePlayers.length - 1
+                              }
+                              onClick={() =>
+                                handleReorder(player._id, "down")
+                              }
+                              className="grid h-10 w-10 place-items-center rounded-lg border border-border bg-card text-[#526275] transition-[background-color,border-color,color] hover:border-[#aebbc8] hover:bg-muted hover:text-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary disabled:pointer-events-none disabled:opacity-35"
+                            >
+                              <ChevronDown
+                                aria-hidden="true"
+                                size={17}
+                                strokeWidth={2}
+                              />
+                            </button>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setForm({
+                                  name: player.name,
+                                  number: player.number ?? "",
+                                  teamId: player.teamId,
+                                  photoStorageId: "",
+                                });
+                                setExistingPhotoUrl(player.photoUrl ?? null);
+                                setPhotoRemoved(false);
+                                beginEditorSession();
+                                setEditingId(player._id);
+                                resetFeedback();
+                              }}
+                            >
+                              Edytuj
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                handleRemove(player._id, player.name)
+                              }
+                              className="text-[#a92c23] hover:bg-[#fef3f2]"
+                            >
+                              Usuń
+                            </Button>
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              )}
+            </section>
+          </div>
+        </div>
+      )}
     </>
+  );
+}
+
+export default function AdminSquadsPage() {
+  return (
+    <Suspense
+      fallback={
+        <>
+          <AdminPageHeader
+            title="Kadry"
+            description="Wybierz drużynę i zarządzaj tylko jej zawodnikami."
+          />
+          <RosterWorkspaceSkeleton />
+        </>
+      }
+    >
+      <AdminSquadsWorkspace />
+    </Suspense>
   );
 }
