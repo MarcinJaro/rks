@@ -11,12 +11,14 @@ export function FileUpload({
   maxSizeMb = 10,
   multiple = false,
   onUploaded,
+  onBusyChange,
 }: {
   label: string;
   accept: string;
   maxSizeMb?: number;
   multiple?: boolean;
   onUploaded: (ids: Id<"_storage">[]) => void;
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const inputId = useId();
@@ -40,15 +42,18 @@ export function FileUpload({
       });
       if (invalid) {
         setError(`Plik ${invalid.name} ma niedozwolony format`);
+        event.target.value = "";
         return;
       }
     }
     const tooBig = files.find((file) => file.size > maxSizeMb * 1024 * 1024);
     if (tooBig) {
       setError(`Plik ${tooBig.name} przekracza ${maxSizeMb} MB`);
+      event.target.value = "";
       return;
     }
     setBusy(true);
+    onBusyChange?.(true);
     const ids: Id<"_storage">[] = [];
     try {
       for (const file of files) {
@@ -65,7 +70,6 @@ export function FileUpload({
         ids.push(storageId);
       }
       onUploaded(ids);
-      if (inputRef.current) inputRef.current.value = "";
     } catch (err) {
       // Błąd w środku serii nie może gubić plików już wysłanych - inaczej
       // wiszą w storage bez referencji, a admin wysyła wszystko od nowa.
@@ -77,7 +81,9 @@ export function FileUpload({
           : base,
       );
     } finally {
+      if (inputRef.current) inputRef.current.value = "";
       setBusy(false);
+      onBusyChange?.(false);
     }
   }
 

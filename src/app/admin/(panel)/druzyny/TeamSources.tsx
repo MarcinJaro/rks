@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
@@ -40,7 +40,15 @@ function formatSyncedAt(timestamp: number | undefined) {
   return `ostatni sync: ${new Date(timestamp).toLocaleString("pl-PL")}`;
 }
 
-export function TeamSources({ teamId }: { teamId: Id<"teams"> }) {
+export function TeamSources({
+  teamId,
+  embedded = false,
+  onBusyChange,
+}: {
+  teamId: Id<"teams">;
+  embedded?: boolean;
+  onBusyChange?: (busy: boolean) => void;
+}) {
   const sources = useQuery(api.syncSources.listByTeam, { teamId });
   const addSource = useMutation(api.syncSources.add);
   const updateSource = useMutation(api.syncSources.update);
@@ -54,6 +62,14 @@ export function TeamSources({ teamId }: { teamId: Id<"teams"> }) {
     useState<Id<"syncSources"> | null>(null);
   const [editName, setEditName] = useState("");
   const [editType, setEditType] = useState<SourceMatchType>("liga");
+
+  useEffect(() => {
+    onBusyChange?.(busy);
+
+    return () => {
+      if (busy) onBusyChange?.(false);
+    };
+  }, [busy, onBusyChange]);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -97,28 +113,42 @@ export function TeamSources({ teamId }: { teamId: Id<"teams"> }) {
   }
 
   async function handleToggle(source: SyncSource) {
+    if (busy) return;
     setError(null);
+    setBusy(true);
     try {
       await updateSource({ sourceId: source._id, enabled: !source.enabled });
     } catch (err) {
       setError(errorMessage(err));
+    } finally {
+      setBusy(false);
     }
   }
 
   async function handleDelete(sourceId: Id<"syncSources">) {
+    if (busy) return;
     if (!window.confirm("Usunąć to źródło? Tej operacji nie można cofnąć.")) {
       return;
     }
     setError(null);
+    setBusy(true);
     try {
       await removeSource({ sourceId });
     } catch (err) {
       setError(errorMessage(err));
+    } finally {
+      setBusy(false);
     }
   }
 
   return (
-    <section className="mt-6 rounded-lg border border-border bg-card p-5">
+    <section
+      className={
+        embedded
+          ? "mt-6 border-t border-border pt-6"
+          : "mt-6 rounded-lg border border-border bg-card p-5"
+      }
+    >
       <h2 className="text-lg font-black text-navy">Źródła synchronizacji</h2>
       <p className="mt-1 text-xs text-muted-foreground">
         Terminarz i wyniki tej drużyny pobierane automatycznie. Zmiany w
@@ -168,13 +198,16 @@ export function TeamSources({ teamId }: { teamId: Id<"teams"> }) {
             </span>
             <div className="flex gap-2">
               <Button
+                type="button"
                 size="sm"
                 variant="outline"
                 onClick={() => handleToggle(source)}
+                disabled={busy}
               >
                 {source.enabled ? "Wyłącz" : "Włącz"}
               </Button>
               <Button
+                type="button"
                 size="sm"
                 variant="outline"
                 onClick={() => {
@@ -183,58 +216,74 @@ export function TeamSources({ teamId }: { teamId: Id<"teams"> }) {
                   setEditType(source.matchType);
                   setError(null);
                 }}
+                disabled={busy}
               >
                 Edytuj
               </Button>
               <Button
+                type="button"
                 size="sm"
                 variant="ghost"
                 onClick={() => handleDelete(source._id)}
+                disabled={busy}
               >
                 Usuń
               </Button>
             </div>
             {editingSourceId === source._id ? (
-              <div className="grid w-full gap-3 rounded-md border border-border p-3 md:grid-cols-3">
-                <Field label="Nazwa drużyny u źródła">
-                  <input
-                    value={editName}
-                    onChange={(event) => setEditName(event.target.value)}
-                    className={inputClass}
-                  />
-                </Field>
-                <Field label="Typ meczów">
-                  <select
-                    value={editType}
-                    onChange={(event) =>
-                      setEditType(event.target.value as SourceMatchType)
-                    }
-                    className={inputClass}
-                  >
-                    {Object.entries(typeLabels).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <div className="flex items-end gap-2">
-                  <Button
-                    size="sm"
-                    onClick={() => handleEditSave(source._id)}
-                    disabled={busy || !editName.trim()}
-                  >
-                    {busy ? "Zapisywanie…" : "Zapisz"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setEditingSourceId(null)}
-                  >
-                    Anuluj
-                  </Button>
-                </div>
-              </div>
+              <form
+                className="w-full"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void handleEditSave(source._id);
+                }}
+              >
+                <fieldset
+                  disabled={busy}
+                  className="grid min-w-0 gap-3 rounded-md border border-border p-3 md:grid-cols-3"
+                >
+                  <Field label="Nazwa drużyny u źródła">
+                    <input
+                      value={editName}
+                      onChange={(event) => setEditName(event.target.value)}
+                      required
+                      className={inputClass}
+                    />
+                  </Field>
+                  <Field label="Typ meczów">
+                    <select
+                      value={editType}
+                      onChange={(event) =>
+                        setEditType(event.target.value as SourceMatchType)
+                      }
+                      className={inputClass}
+                    >
+                      {Object.entries(typeLabels).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <div className="flex items-end gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditingSourceId(null)}
+                    >
+                      Anuluj
+                    </Button>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={!editName.trim()}
+                    >
+                      {busy ? "Zapisywanie…" : "Zapisz"}
+                    </Button>
+                  </div>
+                </fieldset>
+              </form>
             ) : null}
             {source.lastError ? (
               <p className="w-full rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs font-bold text-red-300">
@@ -245,57 +294,71 @@ export function TeamSources({ teamId }: { teamId: Id<"teams"> }) {
         ))}
       </div>
 
-      <div className="mt-5 grid gap-4 md:grid-cols-3">
-        <div className="md:col-span-2">
-          <Field label="Adres źródła">
-            <input
-              value={form.url}
-              onChange={(event) => set("url", event.target.value)}
-              placeholder="http://www.90minut.pl/liga/1/liga14871.html"
-              className={`${inputClass} font-mono text-sm`}
-            />
-          </Field>
-        </div>
-        <Field label="Typ meczów">
-          <select
-            value={form.matchType}
-            onChange={(event) =>
-              set("matchType", event.target.value as SourceMatchType)
-            }
-            className={inputClass}
-          >
-            {Object.entries(typeLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <div className="md:col-span-2">
-          <Field label="Nazwa drużyny u źródła">
-            <input
-              value={form.teamNameOnSource}
-              onChange={(event) => set("teamNameOnSource", event.target.value)}
-              placeholder="Okęcie Warszawa"
-              className={inputClass}
-            />
-          </Field>
-        </div>
-      </div>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          void handleAdd();
+        }}
+      >
+        <fieldset disabled={busy} className="min-w-0 border-0 p-0">
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
+            <div className="md:col-span-2">
+              <Field label="Adres źródła">
+                <input
+                  value={form.url}
+                  onChange={(event) => set("url", event.target.value)}
+                  placeholder="http://www.90minut.pl/liga/1/liga14871.html"
+                  required
+                  className={`${inputClass} font-mono text-sm`}
+                />
+              </Field>
+            </div>
+            <Field label="Typ meczów">
+              <select
+                value={form.matchType}
+                onChange={(event) =>
+                  set("matchType", event.target.value as SourceMatchType)
+                }
+                className={inputClass}
+              >
+                {Object.entries(typeLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <div className="md:col-span-2">
+              <Field label="Nazwa drużyny u źródła">
+                <input
+                  value={form.teamNameOnSource}
+                  onChange={(event) =>
+                    set("teamNameOnSource", event.target.value)
+                  }
+                  placeholder="Okęcie Warszawa"
+                  required
+                  className={inputClass}
+                />
+              </Field>
+            </div>
+          </div>
 
-      <div className="mt-5 flex gap-2">
-        <Button
-          onClick={handleAdd}
-          disabled={busy || !form.url.trim() || !form.teamNameOnSource.trim()}
-        >
-          {busy ? "Dodawanie…" : "Dodaj źródło"}
-        </Button>
-      </div>
+          <div className="mt-5 flex gap-2">
+            <Button
+              type="submit"
+              disabled={!form.url.trim() || !form.teamNameOnSource.trim()}
+            >
+              {busy ? "Dodawanie…" : "Dodaj źródło"}
+            </Button>
+          </div>
 
-      <p className="mt-3 text-xs text-muted-foreground">
-        Wklej link do strony ligi na 90minut.pl albo do drużyny na virium.pl.
-        Nazwa drużyny musi być dokładnie taka, jak na stronie źródła.
-      </p>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Wklej link do strony ligi na 90minut.pl albo do drużyny na
+            virium.pl. Nazwa drużyny musi być dokładnie taka, jak na stronie
+            źródła.
+          </p>
+        </fieldset>
+      </form>
     </section>
   );
 }

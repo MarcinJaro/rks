@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
+import { AdminEditorDialog } from "@/components/admin/AdminEditorDialog";
 import { Button } from "@/components/ui/button";
 import { Field, Feedback, inputClass } from "@/components/admin/fields";
 import { FileUpload } from "@/components/admin/FileUpload";
@@ -20,24 +21,47 @@ export default function AdminDocumentsPage() {
   const [fileStorageId, setFileStorageId] = useState<Id<"_storage"> | "">("");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<Id<"documents"> | null>(null);
+  const [editingId, setEditingId] = useState<
+    Id<"documents"> | "new" | null
+  >(null);
   const [busy, setBusy] = useState(false);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const editorBusy = busy || uploadBusy;
   const removeUpload = useMutation(api.files.removeUpload);
 
-  // Plik wgrany w tej sesji i porzucony przed zapisem musi zniknąć ze storage.
-  function discardPendingUpload() {
-    if (fileStorageId) {
-      void removeUpload({ storageId: fileStorageId }).catch(() => {});
+  function resetForm() {
+    setTitle("");
+    setCategory("");
+    setFileStorageId("");
+  }
+
+  function handleCloseEditor() {
+    const pendingFileId = fileStorageId;
+    setEditingId(null);
+    resetForm();
+    setError(null);
+    setMessage(null);
+    if (pendingFileId) {
+      void removeUpload({ storageId: pendingFileId }).catch((err) => {
+        setError(errorMessage(err));
+      });
     }
   }
 
+  function openNew() {
+    resetForm();
+    setError(null);
+    setMessage(null);
+    setEditingId("new");
+  }
+
   async function handleSave() {
-    if (busy) return;
+    if (editorBusy) return;
     setError(null);
     setMessage(null);
     setBusy(true);
     try {
-      if (editingId) {
+      if (editingId && editingId !== "new") {
         await updateDocument({
           id: editingId,
           title,
@@ -45,7 +69,6 @@ export default function AdminDocumentsPage() {
           // Nowy plik podmienia stary (backend kasuje poprzedni ze storage).
           ...(fileStorageId ? { fileStorageId } : {}),
         });
-        setEditingId(null);
         setMessage("Dokument zapisany");
       } else {
         if (!fileStorageId) {
@@ -54,9 +77,8 @@ export default function AdminDocumentsPage() {
         await createDocument({ title, category, fileStorageId });
         setMessage("Dokument dodany");
       }
-      setTitle("");
-      setCategory("");
-      setFileStorageId("");
+      setEditingId(null);
+      resetForm();
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -66,74 +88,111 @@ export default function AdminDocumentsPage() {
 
   return (
     <>
-      <h1 className="text-3xl font-black text-navy">Dokumenty</h1>
-      <Feedback error={error} message={message} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-3xl font-black text-navy">Dokumenty</h1>
+        <Button onClick={openNew}>Dodaj dokument</Button>
+      </div>
+      {!editingId ? <Feedback error={error} message={message} /> : null}
 
-      <section className="mt-6 rounded-lg border border-border bg-card p-5">
-        <h2 className="text-lg font-black text-navy">
-          {editingId ? "Edycja dokumentu" : "Nowy dokument"}
-        </h2>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <Field label="Tytuł">
-            <input
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              className={inputClass}
-            />
-          </Field>
-          <Field label="Kategoria">
-            <input
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
-              placeholder="Statut, deklaracje, RODO…"
-              className={inputClass}
-            />
-          </Field>
-          <div className="md:col-span-2">
-            <FileUpload
-              label={
-                editingId
-                  ? "Nowy plik PDF (opcjonalnie - podmieni obecny)"
-                  : "Plik PDF (max 20 MB)"
-              }
-              accept="application/pdf"
-              maxSizeMb={20}
-              onUploaded={(ids) => {
-                if (fileStorageId && fileStorageId !== ids[0]) {
-                  void removeUpload({ storageId: fileStorageId }).catch(() => {});
-                }
-                setFileStorageId(ids[0]);
-              }}
-            />
-            {fileStorageId ? (
-              <p className="mt-1 text-xs text-muted-foreground">
-                Plik wysłany. Zapisze się po kliknięciu &quot;Zapisz&quot;.
-              </p>
-            ) : null}
-          </div>
-        </div>
-        <div className="mt-5 flex gap-2">
-          <Button onClick={handleSave} disabled={busy || !title || !category}>
-            {busy ? "Zapisywanie…" : "Zapisz"}
-          </Button>
-          {editingId ? (
+      <AdminEditorDialog
+        open={editingId !== null}
+        onClose={handleCloseEditor}
+        title={editingId === "new" ? "Nowy dokument" : "Edycja dokumentu"}
+        description={
+          editingId === "new"
+            ? "Dodaj nazwę, kategorię i plik PDF dostępny na stronie klubu."
+            : "Zmień dane dokumentu lub opcjonalnie zastąp jego plik PDF."
+        }
+        busy={editorBusy}
+        size="md"
+        footer={
+          <>
             <Button
+              type="button"
               variant="ghost"
-              onClick={() => {
-                discardPendingUpload();
-                setEditingId(null);
-                setTitle("");
-                setCategory("");
-                setFileStorageId("");
-                setError(null);
-                setMessage(null);
-              }}
+              onClick={handleCloseEditor}
+              disabled={editorBusy}
             >
               Anuluj
             </Button>
-          ) : null}
-        </div>
-      </section>
+            <Button
+              type="submit"
+              form="document-editor-form"
+              disabled={
+                editorBusy ||
+                !title ||
+                !category ||
+                (editingId === "new" && !fileStorageId)
+              }
+            >
+              {busy ? "Zapisywanie…" : uploadBusy ? "Wysyłanie…" : "Zapisz"}
+            </Button>
+          </>
+        }
+      >
+        <form
+          id="document-editor-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSave();
+          }}
+        >
+          <Feedback error={error} />
+          <fieldset
+            disabled={editorBusy}
+            className={
+              error
+                ? "mt-4 grid min-w-0 gap-4 border-0 p-0 md:grid-cols-2"
+                : "grid min-w-0 gap-4 border-0 p-0 md:grid-cols-2"
+            }
+          >
+            <Field label="Tytuł">
+              <input
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                required
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Kategoria">
+              <input
+                value={category}
+                onChange={(event) => setCategory(event.target.value)}
+                placeholder="Statut, deklaracje, RODO…"
+                required
+                className={inputClass}
+              />
+            </Field>
+            <div className="md:col-span-2">
+              <FileUpload
+                label={
+                  editingId === "new"
+                    ? "Plik PDF (max 20 MB)"
+                    : "Nowy plik PDF (opcjonalnie - podmieni obecny)"
+                }
+                accept="application/pdf"
+                maxSizeMb={20}
+                onBusyChange={setUploadBusy}
+                onUploaded={(ids) => {
+                  const nextFileId = ids[0];
+                  if (!nextFileId) return;
+                  if (fileStorageId && fileStorageId !== nextFileId) {
+                    void removeUpload({ storageId: fileStorageId }).catch(
+                      (err) => setError(errorMessage(err)),
+                    );
+                  }
+                  setFileStorageId(nextFileId);
+                }}
+              />
+              {fileStorageId ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Plik wysłany. Zapisze się po kliknięciu &quot;Zapisz&quot;.
+                </p>
+              ) : null}
+            </div>
+          </fieldset>
+        </form>
+      </AdminEditorDialog>
 
       <div className="mt-6 grid gap-3">
         {(documents ?? []).map((document) => (

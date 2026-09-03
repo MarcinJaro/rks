@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
+import { AdminEditorDialog } from "@/components/admin/AdminEditorDialog";
 import { Button } from "@/components/ui/button";
 import { Field, Feedback, inputClass } from "@/components/admin/fields";
 import { FileUpload } from "@/components/admin/FileUpload";
@@ -43,6 +44,8 @@ export default function AdminGalleriesPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const editorBusy = busy || uploadBusy;
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -50,12 +53,16 @@ export default function AdminGalleriesPage() {
 
   // form.imageIds to wyłącznie zdjęcia wgrane w tej sesji formularza,
   // jeszcze niezapisane w galerii - tylko takie wolno sprzątnąć przy Anuluj.
-  function handleCancel() {
-    for (const imageId of form.imageIds) {
-      void removeUpload({ storageId: imageId }).catch(() => {});
-    }
+  function handleCloseEditor() {
+    const pendingImageIds = form.imageIds;
     setEditingId(null);
     setForm(emptyForm);
+    setError(null);
+    for (const imageId of pendingImageIds) {
+      void removeUpload({ storageId: imageId }).catch((err) => {
+        setError(errorMessage(err));
+      });
+    }
   }
 
   async function handleRemoveGallery(id: Id<"galleries">) {
@@ -93,7 +100,7 @@ export default function AdminGalleriesPage() {
   }
 
   async function handleSave() {
-    if (busy) return;
+    if (editorBusy) return;
     setError(null);
     const timestamp = form.date ? new Date(form.date).getTime() : Date.now();
     setBusy(true);
@@ -142,17 +149,60 @@ export default function AdminGalleriesPage() {
         </Button>
       </div>
 
-      {editingId ? (
-        <section className="mt-6 rounded-lg border border-border bg-card p-5">
-          <h2 className="text-lg font-black text-navy">
-            {editingId === "new" ? "Nowa galeria" : "Edycja galerii"}
-          </h2>
+      {!editingId ? <Feedback error={error} /> : null}
+
+      <AdminEditorDialog
+        open={editingId !== null}
+        onClose={handleCloseEditor}
+        title={editingId === "new" ? "Nowa galeria" : "Edycja galerii"}
+        description="Uzupełnij informacje o galerii i dodaj zdjęcia, które mają się w niej znaleźć."
+        busy={editorBusy}
+        size="md"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleCloseEditor}
+              disabled={editorBusy}
+            >
+              Anuluj
+            </Button>
+            <Button
+              type="submit"
+              form="gallery-editor-form"
+              disabled={
+                editorBusy ||
+                !form.title ||
+                (editingId === "new" && !form.imageIds.length)
+              }
+            >
+              {busy ? "Zapisywanie…" : uploadBusy ? "Wysyłanie…" : "Zapisz"}
+            </Button>
+          </>
+        }
+      >
+        <form
+          id="gallery-editor-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSave();
+          }}
+        >
           <Feedback error={error} />
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <fieldset
+            disabled={editorBusy}
+            className={
+              error
+                ? "mt-4 grid min-w-0 gap-4 border-0 p-0 md:grid-cols-2"
+                : "grid min-w-0 gap-4 border-0 p-0 md:grid-cols-2"
+            }
+          >
             <Field label="Tytuł">
               <input
                 value={form.title}
                 onChange={(event) => set("title", event.target.value)}
+                required
                 className={inputClass}
               />
             </Field>
@@ -190,9 +240,13 @@ export default function AdminGalleriesPage() {
                 label="Zdjęcia (można wybrać wiele, max 10 MB każde)"
                 accept="image/*"
                 multiple
-                onUploaded={(ids) =>
-                  set("imageIds", [...form.imageIds, ...ids])
-                }
+                onBusyChange={setUploadBusy}
+                onUploaded={(ids) => {
+                  setForm((current) => ({
+                    ...current,
+                    imageIds: [...current.imageIds, ...ids],
+                  }));
+                }}
               />
               {form.imageIds.length ? (
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -201,24 +255,9 @@ export default function AdminGalleriesPage() {
                 </p>
               ) : null}
             </div>
-          </div>
-          <div className="mt-5 flex gap-2">
-            <Button
-              onClick={handleSave}
-              disabled={
-                busy ||
-                !form.title ||
-                (editingId === "new" && !form.imageIds.length)
-              }
-            >
-              {busy ? "Zapisywanie…" : "Zapisz"}
-            </Button>
-            <Button variant="ghost" onClick={handleCancel}>
-              Anuluj
-            </Button>
-          </div>
-        </section>
-      ) : null}
+          </fieldset>
+        </form>
+      </AdminEditorDialog>
 
       <div className="mt-6 grid gap-4">
         {(galleries ?? []).map((gallery) => (

@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
+import { AdminEditorDialog } from "@/components/admin/AdminEditorDialog";
 import { Field, Feedback, inputClass } from "@/components/admin/fields";
 import { FileUpload } from "@/components/admin/FileUpload";
 import { errorMessage } from "@/lib/convexError";
@@ -85,6 +86,8 @@ export default function AdminArticlesPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const editorBusy = busy || uploadBusy;
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -152,7 +155,7 @@ export default function AdminArticlesPage() {
   }
 
   async function handleSave() {
-    if (busy) return;
+    if (editorBusy) return;
     resetFeedback();
     setBusy(true);
     try {
@@ -218,18 +221,52 @@ export default function AdminArticlesPage() {
         </div>
         <Button onClick={openNew}>Dodaj artykuł</Button>
       </div>
-      <Feedback error={error} message={message} />
+      <Feedback error={editingId ? null : error} message={message} />
 
-      {editingId ? (
-        <section className="mt-6 rounded-lg border border-border bg-card p-5">
-          <h2 className="text-lg font-black text-navy">
-            {editingId === "new" ? "Nowy artykuł" : "Edycja artykułu"}
-          </h2>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
+      <AdminEditorDialog
+        open={editingId !== null}
+        onClose={handleCancel}
+        title={editingId === "new" ? "Nowy artykuł" : "Edycja artykułu"}
+        description="Uzupełnij treść, publikację i materiały artykułu."
+        size="xl"
+        busy={editorBusy}
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleCancel}
+              disabled={editorBusy}
+            >
+              Anuluj
+            </Button>
+            <Button
+              type="submit"
+              form="article-editor-form"
+              disabled={editorBusy || !form.title.trim()}
+            >
+              {busy ? "Zapisywanie…" : uploadBusy ? "Wysyłanie…" : "Zapisz"}
+            </Button>
+          </>
+        }
+      >
+        <form
+          id="article-editor-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSave();
+          }}
+        >
+          <Feedback error={error} />
+          <fieldset
+            disabled={editorBusy}
+            className="mt-4 grid min-w-0 gap-4 border-0 p-0 md:grid-cols-2"
+          >
             <Field label="Tytuł">
               <input
                 value={form.title}
                 onChange={(event) => set("title", event.target.value)}
+                required
                 className={inputClass}
               />
             </Field>
@@ -332,6 +369,7 @@ export default function AdminArticlesPage() {
               <FileUpload
                 label="Zdjęcie główne (max 10 MB)"
                 accept="image/*"
+                onBusyChange={setUploadBusy}
                 onUploaded={handleImageUploaded}
               />
               {uploadedImageId ? (
@@ -340,23 +378,15 @@ export default function AdminArticlesPage() {
                 </p>
               ) : null}
             </div>
-          </div>
-          <div className="mt-5 flex gap-2">
-            <Button onClick={handleSave} disabled={busy || !form.title.trim()}>
-              {busy ? "Zapisywanie…" : "Zapisz"}
-            </Button>
-            <Button variant="ghost" onClick={handleCancel}>
-              Anuluj
-            </Button>
-          </div>
-        </section>
-      ) : null}
+          </fieldset>
+        </form>
+      </AdminEditorDialog>
 
       <div className="mt-6 grid gap-3">
         {articles.map((article) => (
           <article
             key={article._id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-4"
+            className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-4"
           >
             <div className="flex min-w-0 items-center gap-3">
               {article.imageUrl ? (

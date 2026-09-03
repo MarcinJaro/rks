@@ -28,6 +28,7 @@ import type * as matchesSync from "../matchesSync.js";
 import type * as pages from "../pages.js";
 import type * as people from "../people.js";
 import type * as players from "../players.js";
+import type * as publicDataImport from "../publicDataImport.js";
 import type * as regulations from "../regulations.js";
 import type * as seed from "../seed.js";
 import type * as settings from "../settings.js";
@@ -68,6 +69,7 @@ declare const fullApi: ApiFromModules<{
   pages: typeof pages;
   people: typeof people;
   players: typeof players;
+  publicDataImport: typeof publicDataImport;
   regulations: typeof regulations;
   seed: typeof seed;
   settings: typeof settings;

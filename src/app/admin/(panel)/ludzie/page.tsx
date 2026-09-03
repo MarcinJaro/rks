@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
+import { AdminEditorDialog } from "@/components/admin/AdminEditorDialog";
 import { Button } from "@/components/ui/button";
 import { Field, Feedback, inputClass } from "@/components/admin/fields";
 import { FileUpload } from "@/components/admin/FileUpload";
@@ -48,14 +49,16 @@ export default function AdminPeoplePage() {
   const reorder = useMutation(api.people.reorder);
   const removeUpload = useMutation(api.files.removeUpload);
 
-  const [editingId, setEditingId] = useState<Id<"people"> | "new" | null>(
-    null,
-  );
+  const [editingId, setEditingId] = useState<Id<"people"> | "new" | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
   const [photoRemoved, setPhotoRemoved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const editorBusy = busy || uploadBusy;
+  const [editorSession, setEditorSession] = useState(0);
+  const activeEditorSessionRef = useRef(0);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -63,40 +66,55 @@ export default function AdminPeoplePage() {
 
   // Sprząta wyłącznie plik wgrany w tej sesji formularza i jeszcze niezapisany
   // w dokumencie - zapisane zdjęcia kasuje backend przy update/remove.
-  function discardPendingUpload() {
-    if (form.photoStorageId) {
-      void removeUpload({ storageId: form.photoStorageId }).catch(() => {});
-    }
+  function removePendingUpload(storageId: Id<"_storage">) {
+    void removeUpload({ storageId }).catch((err) => {
+      setError(errorMessage(err));
+    });
   }
 
-  function handlePhotoUploaded(ids: Id<"_storage">[]) {
-    if (form.photoStorageId && form.photoStorageId !== ids[0]) {
-      void removeUpload({ storageId: form.photoStorageId }).catch(() => {});
+  function beginEditorSession() {
+    activeEditorSessionRef.current += 1;
+    setEditorSession(activeEditorSessionRef.current);
+  }
+
+  function handlePhotoUploaded(ids: Id<"_storage">[], session: number) {
+    const nextPhotoId = ids[0];
+    if (!nextPhotoId) return;
+    if (activeEditorSessionRef.current !== session) {
+      for (const storageId of ids) removePendingUpload(storageId);
+      return;
     }
-    set("photoStorageId", ids[0]);
+    if (form.photoStorageId && form.photoStorageId !== nextPhotoId) {
+      removePendingUpload(form.photoStorageId);
+    }
+    set("photoStorageId", nextPhotoId);
     setPhotoRemoved(false);
   }
 
   function handleRemovePhoto() {
     if (form.photoStorageId) {
-      void removeUpload({ storageId: form.photoStorageId }).catch(() => {});
+      removePendingUpload(form.photoStorageId);
       set("photoStorageId", "");
     }
     if (existingPhotoUrl) setPhotoRemoved(true);
   }
 
   function handleCancel() {
-    discardPendingUpload();
+    const pendingPhotoId = form.photoStorageId;
+    activeEditorSessionRef.current += 1;
     setEditingId(null);
     setForm(emptyForm);
     setExistingPhotoUrl(null);
     setPhotoRemoved(false);
+    setError(null);
+    if (pendingPhotoId) removePendingUpload(pendingPhotoId);
   }
 
   async function handleSave() {
-    if (busy) return;
+    if (editorBusy) return;
     setError(null);
     setBusy(true);
+    activeEditorSessionRef.current += 1;
     try {
       if (editingId === "new") {
         await createPerson({
@@ -129,6 +147,7 @@ export default function AdminPeoplePage() {
       setExistingPhotoUrl(null);
       setPhotoRemoved(false);
     } catch (err) {
+      beginEditorSession();
       setError(errorMessage(err));
     } finally {
       setBusy(false);
@@ -166,6 +185,7 @@ export default function AdminPeoplePage() {
         <Button
           onClick={() => {
             setForm(emptyForm);
+            beginEditorSession();
             setEditingId("new");
             setExistingPhotoUrl(null);
             setPhotoRemoved(false);
@@ -176,17 +196,56 @@ export default function AdminPeoplePage() {
         </Button>
       </div>
 
-      {editingId ? (
-        <section className="mt-6 rounded-lg border border-border bg-card p-5">
-          <h2 className="text-lg font-black text-navy">
-            {editingId === "new" ? "Nowa osoba" : "Edycja osoby"}
-          </h2>
+      <Feedback error={editingId ? null : error} />
+
+      <AdminEditorDialog
+        open={editingId !== null}
+        onClose={handleCancel}
+        title={editingId === "new" ? "Nowa osoba" : "Edycja osoby"}
+        description={
+          editingId === "new"
+            ? "Dodaj osobę i przypisz jej rolę w klubie."
+            : "Zmień dane osoby bez opuszczania bieżącej listy."
+        }
+        size="lg"
+        busy={editorBusy}
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleCancel}
+              disabled={editorBusy}
+            >
+              Anuluj
+            </Button>
+            <Button
+              type="submit"
+              form="person-editor-form"
+              disabled={editorBusy || !form.name}
+            >
+              {busy ? "Zapisywanie…" : uploadBusy ? "Wysyłanie…" : "Zapisz"}
+            </Button>
+          </>
+        }
+      >
+        <form
+          id="person-editor-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSave();
+          }}
+        >
           <Feedback error={error} />
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <fieldset
+            disabled={editorBusy}
+            className="mt-4 grid min-w-0 gap-4 border-0 p-0 md:grid-cols-2"
+          >
             <Field label="Imię i nazwisko">
               <input
                 value={form.name}
                 onChange={(event) => set("name", event.target.value)}
+                required
                 className={inputClass}
               />
             </Field>
@@ -254,7 +313,12 @@ export default function AdminPeoplePage() {
                     height={48}
                     className="h-12 w-12 rounded-full object-cover"
                   />
-                  <Button size="sm" variant="ghost" onClick={handleRemovePhoto}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleRemovePhoto}
+                  >
                     Usuń zdjęcie
                   </Button>
                 </div>
@@ -267,20 +331,13 @@ export default function AdminPeoplePage() {
               <FileUpload
                 label="Zdjęcie (obraz, max 10 MB)"
                 accept="image/*"
-                onUploaded={handlePhotoUploaded}
+                onBusyChange={setUploadBusy}
+                onUploaded={(ids) => handlePhotoUploaded(ids, editorSession)}
               />
             </div>
-          </div>
-          <div className="mt-5 flex gap-2">
-            <Button onClick={handleSave} disabled={busy || !form.name}>
-              {busy ? "Zapisywanie…" : "Zapisz"}
-            </Button>
-            <Button variant="ghost" onClick={handleCancel}>
-              Anuluj
-            </Button>
-          </div>
-        </section>
-      ) : null}
+          </fieldset>
+        </form>
+      </AdminEditorDialog>
 
       {grouped.map(({ role, items }) => (
         <section key={role} className="mt-8">
@@ -348,6 +405,7 @@ export default function AdminPeoplePage() {
                         bio: person.bio ?? "",
                         photoStorageId: "",
                       });
+                      beginEditorSession();
                       setEditingId(person._id);
                       setExistingPhotoUrl(person.photoUrl ?? null);
                       setPhotoRemoved(false);

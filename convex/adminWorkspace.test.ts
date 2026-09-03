@@ -33,6 +33,11 @@ async function seedWorkspace(t: ReturnType<typeof convexTest>) {
       role: "zarząd",
       sortOrder: 1,
     });
+    await ctx.db.insert("players", {
+      name: "Zawodnik Testowy",
+      teamId,
+      sortOrder: 1,
+    });
     const articleId = await ctx.db.insert("articles", {
       title: "Szkic testowy",
       slug: "szkic-testowy",
@@ -167,6 +172,7 @@ describe("admin dashboard", () => {
       "Trener Pierwszy",
       "Trener Drugi",
     ]);
+    expect(teams[0].playerCount).toBe(1);
   });
 
   it("nie wlicza rekordu-sentinela do KPI przy przekroczeniu limitu 200", async () => {

@@ -117,7 +117,9 @@ export default defineSchema({
     teamId: v.id("teams"),
     photoStorageId: v.optional(v.id("_storage")),
     sortOrder: v.number(),
-  }).index("by_team", ["teamId", "sortOrder"]),
+  })
+    .index("by_team", ["teamId", "sortOrder"])
+    .index("by_photoStorageId", ["photoStorageId"]),
 
   matches: defineTable({
     homeTeam: v.string(),

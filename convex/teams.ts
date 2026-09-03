@@ -124,6 +124,7 @@ export const adminList = query({
       isActive: v.boolean(),
       sortOrder: v.number(),
       groupPhotoUrl: v.union(v.string(), v.null()),
+      playerCount: v.number(),
       coach: v.union(adminCoachValidator, v.null()),
       coaches: v.array(adminCoachValidator),
     }),
@@ -149,6 +150,19 @@ export const adminList = query({
       ...person,
       role: "trener" as const,
     }));
+    const playerRows = await ctx.db.query("players").take(501);
+    if (playerRows.length > 500) {
+      throw new Error(
+        "Lista zawodników przekroczyła limit 500 rekordów. Użyj paginowanego widoku kadr.",
+      );
+    }
+    const playerCountByTeam = new Map<string, number>();
+    for (const player of playerRows) {
+      playerCountByTeam.set(
+        player.teamId,
+        (playerCountByTeam.get(player.teamId) ?? 0) + 1,
+      );
+    }
     return await Promise.all(
       teams.map(async (team) => {
         const linkedCoaches = trainers.filter(
@@ -169,6 +183,7 @@ export const adminList = query({
           groupPhotoUrl: team.groupPhotoId
             ? await ctx.storage.getUrl(team.groupPhotoId)
             : null,
+          playerCount: playerCountByTeam.get(team._id) ?? 0,
           coach: legacyCoach ?? linkedCoaches[0] ?? null,
           coaches: teamCoaches,
         };

@@ -5,6 +5,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../../convex/_generated/dataModel";
+import { AdminEditorDialog } from "@/components/admin/AdminEditorDialog";
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/convexError";
 
@@ -137,6 +138,13 @@ export default function AdminMatchesPage() {
     setError(null);
   }
 
+  function handleCancel() {
+    setEditingId(null);
+    setSnapshot(null);
+    setForm(emptyForm);
+    setError(null);
+  }
+
   async function handleSave() {
     if (isSaving) return;
     setError(null);
@@ -197,8 +205,7 @@ export default function AdminMatchesPage() {
           ),
         });
       }
-      setEditingId(null);
-      setSnapshot(null);
+      handleCancel();
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -213,7 +220,7 @@ export default function AdminMatchesPage() {
     setError(null);
     try {
       await removeMatch({ id });
-      if (editingId === id) setEditingId(null);
+      if (editingId === id) handleCancel();
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -285,23 +292,67 @@ export default function AdminMatchesPage() {
         </select>
       </div>
 
-      {error ? (
-        <p className="mt-4 rounded-md bg-red-500/15 px-4 py-2 text-sm font-bold text-red-300">
+      {error && !editingId ? (
+        <p
+          role="alert"
+          className="mt-4 rounded-md bg-red-500/15 px-4 py-2 text-sm font-bold text-red-300"
+        >
           {error}
         </p>
       ) : null}
 
-      {editingId ? (
-        <section className="mt-6 rounded-lg border border-border bg-card p-5">
-          <h2 className="text-lg font-black text-navy">
-            {editingId === "new" ? "Nowy mecz" : "Edycja meczu"}
-          </h2>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
+      <AdminEditorDialog
+        open={editingId !== null}
+        onClose={handleCancel}
+        title={editingId === "new" ? "Nowy mecz" : "Edycja meczu"}
+        description="Uzupełnij dane spotkania i zapisz zmiany."
+        size="xl"
+        busy={isSaving}
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleCancel}
+              disabled={isSaving}
+            >
+              Anuluj
+            </Button>
+            <Button
+              type="submit"
+              form="match-editor-form"
+              disabled={isSaving || !form.homeTeam || !form.awayTeam}
+            >
+              {isSaving ? "Zapisywanie…" : "Zapisz"}
+            </Button>
+          </>
+        }
+      >
+        <form
+          id="match-editor-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSave();
+          }}
+        >
+          {error ? (
+            <p
+              role="alert"
+              className="rounded-md bg-red-500/15 px-4 py-2 text-sm font-bold text-red-300"
+            >
+              {error}
+            </p>
+          ) : null}
+          <fieldset
+            disabled={isSaving}
+            className="mt-4 grid min-w-0 gap-4 border-0 p-0 md:grid-cols-2"
+          >
             <label className="grid gap-1 text-sm font-bold">
               Gospodarz
               <input
                 value={form.homeTeam}
                 onChange={(event) => set("homeTeam", event.target.value)}
+                required
                 className={inputClass}
               />
             </label>
@@ -310,12 +361,14 @@ export default function AdminMatchesPage() {
               <input
                 value={form.awayTeam}
                 onChange={(event) => set("awayTeam", event.target.value)}
+                required
                 className={inputClass}
               />
             </label>
-            <label className="grid gap-1 text-sm font-bold">
-              Data i godzina
+            <div className="grid gap-1 text-sm font-bold">
+              <label htmlFor="match-date">Data i godzina</label>
               <input
+                id="match-date"
                 type="datetime-local"
                 value={form.date}
                 onChange={(event) => {
@@ -326,10 +379,11 @@ export default function AdminMatchesPage() {
                     dateConfirmed: true,
                   }));
                 }}
+                required
                 className={inputClass}
               />
               {editingId !== "new" ? (
-                <span className="flex items-center gap-2 text-xs font-normal text-muted-foreground">
+                <label className="flex items-center gap-2 text-xs font-normal text-muted-foreground">
                   <input
                     type="checkbox"
                     checked={form.dateConfirmed}
@@ -338,9 +392,9 @@ export default function AdminMatchesPage() {
                     }
                   />
                   Termin potwierdzony (odznacz, jeśli godzina jest orientacyjna)
-                </span>
+                </label>
               ) : null}
-            </label>
+            </div>
             <label className="grid gap-1 text-sm font-bold">
               Miejsce
               <input
@@ -436,20 +490,9 @@ export default function AdminMatchesPage() {
                 </label>
               </>
             ) : null}
-          </div>
-          <div className="mt-5 flex gap-2">
-            <Button
-              onClick={handleSave}
-              disabled={isSaving || !form.homeTeam || !form.awayTeam}
-            >
-              {isSaving ? "Zapisywanie…" : "Zapisz"}
-            </Button>
-            <Button variant="ghost" onClick={() => setEditingId(null)}>
-              Anuluj
-            </Button>
-          </div>
-        </section>
-      ) : null}
+          </fieldset>
+        </form>
+      </AdminEditorDialog>
 
       <section className="mt-6 rounded-lg border border-border bg-card p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">

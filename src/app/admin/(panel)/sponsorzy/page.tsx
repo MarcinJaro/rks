@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
+import { AdminEditorDialog } from "@/components/admin/AdminEditorDialog";
 import { Button } from "@/components/ui/button";
 import { Field, Feedback, inputClass } from "@/components/admin/fields";
 import { FileUpload } from "@/components/admin/FileUpload";
@@ -40,6 +41,8 @@ export default function AdminSponsorsPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const editorBusy = busy || uploadBusy;
   const [existingLogoUrl, setExistingLogoUrl] = useState<string | null>(null);
   const [logoRemoved, setLogoRemoved] = useState(false);
 
@@ -55,6 +58,16 @@ export default function AdminSponsorsPage() {
     } catch (err) {
       setError(errorMessage(err));
     }
+  }
+
+  function handleCloseEditor() {
+    const pendingLogoId = form.logoStorageId;
+    setEditingId(null);
+    setForm(emptyForm);
+    setExistingLogoUrl(null);
+    setLogoRemoved(false);
+    setError(null);
+    if (pendingLogoId) void discardUpload(pendingLogoId);
   }
 
   async function handleReorder(id: Id<"sponsors">, direction: "up" | "down") {
@@ -77,7 +90,7 @@ export default function AdminSponsorsPage() {
   }
 
   async function handleSave() {
-    if (busy) return;
+    if (editorBusy) return;
     setError(null);
     setBusy(true);
     try {
@@ -133,17 +146,56 @@ export default function AdminSponsorsPage() {
         </Button>
       </div>
 
-      {editingId ? (
-        <section className="mt-6 rounded-lg border border-border bg-card p-5">
-          <h2 className="text-lg font-black text-navy">
-            {editingId === "new" ? "Nowy sponsor" : "Edycja sponsora"}
-          </h2>
+      {!editingId ? <Feedback error={error} /> : null}
+
+      <AdminEditorDialog
+        open={editingId !== null}
+        onClose={handleCloseEditor}
+        title={editingId === "new" ? "Nowy sponsor" : "Edycja sponsora"}
+        description="Uzupełnij dane sponsora lub partnera oraz opcjonalnie dodaj jego logo."
+        busy={editorBusy}
+        size="md"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleCloseEditor}
+              disabled={editorBusy}
+            >
+              Anuluj
+            </Button>
+            <Button
+              type="submit"
+              form="sponsor-editor-form"
+              disabled={editorBusy || !form.name}
+            >
+              {busy ? "Zapisywanie…" : uploadBusy ? "Wysyłanie…" : "Zapisz"}
+            </Button>
+          </>
+        }
+      >
+        <form
+          id="sponsor-editor-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSave();
+          }}
+        >
           <Feedback error={error} />
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <fieldset
+            disabled={editorBusy}
+            className={
+              error
+                ? "mt-4 grid min-w-0 gap-4 border-0 p-0 md:grid-cols-2"
+                : "grid min-w-0 gap-4 border-0 p-0 md:grid-cols-2"
+            }
+          >
             <Field label="Nazwa">
               <input
                 value={form.name}
                 onChange={(event) => set("name", event.target.value)}
+                required
                 className={inputClass}
               />
             </Field>
@@ -186,6 +238,7 @@ export default function AdminSponsorsPage() {
                     className="h-10 w-20 rounded bg-white object-contain p-1"
                   />
                   <Button
+                    type="button"
                     size="sm"
                     variant="ghost"
                     onClick={() => setLogoRemoved(true)}
@@ -203,6 +256,7 @@ export default function AdminSponsorsPage() {
               <FileUpload
                 label="Logo (obraz, max 10 MB; bez logo pokaże się karta tekstowa)"
                 accept="image/*"
+                onBusyChange={setUploadBusy}
                 onUploaded={(ids) => {
                   if (form.logoStorageId && form.logoStorageId !== ids[0]) {
                     void discardUpload(form.logoStorageId);
@@ -212,26 +266,9 @@ export default function AdminSponsorsPage() {
                 }}
               />
             </div>
-          </div>
-          <div className="mt-5 flex gap-2">
-            <Button onClick={handleSave} disabled={busy || !form.name}>
-              {busy ? "Zapisywanie…" : "Zapisz"}
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                if (form.logoStorageId) void discardUpload(form.logoStorageId);
-                setEditingId(null);
-                setForm(emptyForm);
-                setExistingLogoUrl(null);
-                setLogoRemoved(false);
-              }}
-            >
-              Anuluj
-            </Button>
-          </div>
-        </section>
-      ) : null}
+          </fieldset>
+        </form>
+      </AdminEditorDialog>
 
       {groups.map(([type, label]) => {
         const items = (sponsors ?? []).filter((item) => item.type === type);

@@ -166,6 +166,30 @@ a {
   border-color: #f4c7c3;
 }
 
+.admin-dialog-overlay {
+  opacity: 1;
+  transition: opacity 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.admin-dialog-content {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+  transition:
+    opacity 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@starting-style {
+  .admin-dialog-overlay {
+    opacity: 0;
+  }
+
+  .admin-dialog-content {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.98);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto !important;
@@ -175,6 +199,15 @@ a {
   .admin-shell *::before,
   .admin-shell *::after {
     scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  /* Portal dialogu leży poza drzewem .admin-shell, a sam content jest jego
+     korzeniem, więc selektor potomków powyżej nie obejmuje tych dwóch warstw. */
+  .admin-dialog-overlay,
+  .admin-dialog-content {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
