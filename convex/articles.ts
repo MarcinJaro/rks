@@ -15,6 +15,40 @@ export const listPublished = query({
   },
 });
 
+// Artykuły przypisane w panelu do drużyny (np. relacje meczowe seniorów).
+// Strony drużyn są statyczne i znają tylko slug, stąd rozwiązanie po slugu.
+export const listPublishedByTeamSlug = query({
+  args: { slug: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, { slug, limit }) => {
+    const team = await ctx.db
+      .query("teams")
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .first();
+    if (!team) return [];
+
+    const articles = await ctx.db
+      .query("articles")
+      .withIndex("by_team", (q) => q.eq("teamId", team._id))
+      .order("desc")
+      .filter((q) => q.eq(q.field("status"), "published"))
+      .take(limit ?? 4);
+
+    return await Promise.all(
+      articles.map(async (article) => ({
+        _id: article._id,
+        title: article.title,
+        slug: article.slug,
+        excerpt: article.excerpt,
+        category: article.category,
+        publishedAt: article.publishedAt ?? article._creationTime,
+        imageUrl: article.imageStorageId
+          ? await ctx.storage.getUrl(article.imageStorageId)
+          : null,
+      })),
+    );
+  },
+});
+
 export const getBySlug = query({
   args: { slug: v.string() },
   handler: async (ctx, { slug }) => {

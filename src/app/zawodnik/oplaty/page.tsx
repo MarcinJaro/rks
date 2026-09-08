@@ -39,47 +39,7 @@ export default function FeesPage() {
       />
 
       <section className="container-page py-12">
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-          {academyFacts.map(([title, body]) => (
-            <article
-              key={title}
-              className="rounded-[20px] border border-white/8 bg-card p-6"
-            >
-              <h2 className="text-xl font-black text-white">{title}</h2>
-              <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                {body}
-              </p>
-            </article>
-          ))}
-        </div>
-
-        <div className="mt-8 grid gap-8 lg:grid-cols-[1.1fr_.9fr]">
-          <div className="rounded-[24px] border border-white/8 bg-card p-6">
-            <h2 className="text-2xl font-black text-white">
-              Kontakt do trenerów
-            </h2>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              {parentContacts.map(([year, coach, phone]) => (
-                <div
-                  key={year}
-                  className="rounded-[16px] bg-[var(--surface-raised)] p-4"
-                >
-                  <p className="text-sm font-black text-primary">
-                    Rocznik {year}
-                  </p>
-                  <p className="mt-2 text-sm text-white">{coach}</p>
-                  <a
-                    href={telHref(phone)}
-                    className="mt-1 flex items-center gap-2 text-sm text-muted-foreground transition hover:text-primary"
-                  >
-                    <Phone size={15} />
-                    {phone}
-                  </a>
-                </div>
-              ))}
-            </div>
-          </div>
-
+        <div className="grid gap-8 lg:grid-cols-[.9fr_1.1fr]">
           <div className="rounded-[24px] border border-white/8 bg-card p-6">
             <h2 className="text-2xl font-black text-white">Opłaty i konto</h2>
             <dl className="mt-6 grid gap-4 text-sm">
@@ -120,6 +80,46 @@ export default function FeesPage() {
               .
             </p>
           </div>
+
+          <div className="rounded-[24px] border border-white/8 bg-card p-6">
+            <h2 className="text-2xl font-black text-white">
+              Kontakt do trenerów
+            </h2>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              {parentContacts.map(([year, coach, phone]) => (
+                <div
+                  key={year}
+                  className="rounded-[16px] bg-[var(--surface-raised)] p-4"
+                >
+                  <p className="text-lg font-black text-primary">
+                    Rocznik {year}
+                  </p>
+                  <p className="mt-2 text-sm font-bold text-white">{coach}</p>
+                  <a
+                    href={telHref(phone)}
+                    className="mt-1 flex items-center gap-2 text-sm text-muted-foreground transition hover:text-primary"
+                  >
+                    <Phone size={15} />
+                    {phone}
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          {academyFacts.map(([title, body]) => (
+            <article
+              key={title}
+              className="rounded-[20px] border border-white/8 bg-card p-6"
+            >
+              <h2 className="text-xl font-black text-white">{title}</h2>
+              <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                {body}
+              </p>
+            </article>
+          ))}
         </div>
       </section>
     </>

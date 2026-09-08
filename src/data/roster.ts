@@ -50,9 +50,8 @@ const rosterEntries: Record<string, RosterEntry[]> = {
     { name: "Bartłomiej Warchoł", photo: "warchol-bartlomiej" },
     { name: "Piotr Żuk", photo: "zuk-piotr" },
   ],
-  "seniorzy2": [
-    { name: "Jeremiasz Małaszyński", number: "7", photo: "jeremiasz-malaszynski" },
-  ],
+  // Skład usunięty na wniosek klubu (2026-09) - kadra powstanie w panelu.
+  "seniorzy2": [],
   // Kadra prowadzona w panelu administracyjnym.
   "rocznik-2010": [],
   // Kadra prowadzona w panelu administracyjnym.

@@ -68,10 +68,10 @@ export function TeamsGrid({
             >
               <div>
                 <PlusCircle className="mx-auto text-accent transition group-hover:text-primary" size={44} />
-                <h3 className="mt-8 text-2xl font-black uppercase text-white">
+                <h3 className="mt-8 text-3xl font-black uppercase tracking-wide text-white">
                   Rekrutacja
                 </h3>
-                <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                <p className="mt-4 text-sm font-bold leading-6 text-white/80">
                   Dołącz do Akademii RKS Okęcie i zacznij swoją przygodę.
                 </p>
               </div>

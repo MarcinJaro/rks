@@ -271,11 +271,6 @@ export const fanZoneSections = [
     href: "/kibice/galeria",
   },
   {
-    title: "Przyjaciele Okęcia",
-    body: "Informacje o zaprzyjaźnionych środowiskach kibicowskich i klubach.",
-    href: "/kibice#przyjaciele",
-  },
-  {
     title: "Legendy RKS Okęcie",
     body: "Byli zawodnicy, trenerzy i osoby zasłużone dla historii RKS Okęcie.",
     href: "/kibice/historia",
@@ -289,27 +284,6 @@ export const fanZoneSections = [
     title: "Linki",
     body: "Najważniejsze profile społecznościowe klubu, roczników i środowiska kibiców.",
     href: "/kibice#linki",
-  },
-];
-
-export const fanFriends = [
-  {
-    name: "PWKS Huragan Wołomin",
-    fullName: "Piłkarski Wołomiński Klub Sportowy Huragan Wołomin",
-    founded: "1923",
-    colors: "czarno-białe",
-    address: "Korsaka 4, 05-200 Wołomin",
-    phone: "(22) 787-59-26",
-    website: "http://www.huragan-wolomin.pl",
-    facebook:
-      "https://www.facebook.com/Wołomiński-Klub-Sportowy-Huragan-364269323701003",
-    crest: "/images/legacy/huragan-wolomin.jpg",
-    stadium: {
-      name: "Stadion OSiR w Wołominie",
-      capacity: "1 000 miejsc, w tym 574 siedzące",
-      floodlights: "brak",
-      pitch: "100 m × 62 m",
-    },
   },
 ];
 

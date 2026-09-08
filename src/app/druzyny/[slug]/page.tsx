@@ -9,6 +9,7 @@ import { teamCampPhotos } from "@/data/campPhotos";
 import { PersonCard } from "@/components/teams/PersonCard";
 import { TeamRoster } from "@/components/teams/TeamRoster";
 import { TeamNews } from "@/components/teams/TeamNews";
+import { TeamArticles } from "@/components/teams/TeamArticles";
 import { telHref } from "@/lib/phone";
 
 export function generateStaticParams() {
@@ -28,6 +29,9 @@ export default async function TeamPage({
   const roster = getTeamRoster(team.slug);
   const teamContact = teamContacts[team.slug];
   const campPhoto = teamCampPhotos[team.slug];
+  // Zespoły seniorskie mają własne artykuły z panelu zamiast ogólnych
+  // wiadomości z FB - te zostają na stronach roczników dziecięcych.
+  const isSeniorTeam = team.slug === "seniorzy" || team.slug === "seniorzy2";
 
   return (
     <>
@@ -126,9 +130,11 @@ export default async function TeamPage({
             </dl>
           </div>
 
-          <TeamNews slug={team.slug} />
+          {isSeniorTeam ? null : <TeamNews slug={team.slug} />}
         </aside>
       </section>
+
+      {isSeniorTeam ? <TeamArticles slug={team.slug} /> : null}
     </>
   );
 }

@@ -48,6 +48,20 @@ export function SponsorBar() {
                 <PartnerLogo key={partner.name} partner={partner} />
               ))}
             </div>
+
+            <figure className="mx-auto flex max-w-3xl flex-col items-center gap-4 text-center sm:flex-row sm:gap-6 sm:text-left">
+              <Image
+                src="/images/legacy/wspolfinansuje-mst-warszawa.jpg"
+                alt="Znak promocyjny m.st. Warszawy - Zakochaj się w Warszawie"
+                width={250}
+                height={138}
+                className="h-auto w-56 shrink-0 rounded-md"
+              />
+              <figcaption className="text-sm font-bold leading-6 text-white/80">
+                Szkolenie sportowe dzieci i młodzieży prowadzone przez RKS
+                Okęcie Warszawa współfinansuje m.st.&nbsp;Warszawa.
+              </figcaption>
+            </figure>
           </div>
         </FadeIn>
       </div>
