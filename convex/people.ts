@@ -20,6 +20,33 @@ export const listByRole = query({
   },
 });
 
+/**
+ * Zdjęcia trenerów wgrane w panelu. Skład sztabu na stronie nadal pochodzi
+ * ze statycznej listy (z telefonami i przypisaniami) - stąd bierzemy tylko
+ * zdjęcie, dopasowane po imieniu i nazwisku.
+ */
+export const listTrainerPhotos = query({
+  args: {},
+  handler: async (ctx) => {
+    const trainers = await ctx.db
+      .query("people")
+      .withIndex("by_role", (q) => q.eq("role", "trener"))
+      .take(500);
+    const withPhotos = await Promise.all(
+      trainers.map(async (person) => ({
+        name: person.name,
+        photoUrl: person.photoStorageId
+          ? await ctx.storage.getUrl(person.photoStorageId)
+          : null,
+      })),
+    );
+    return withPhotos.filter(
+      (person): person is { name: string; photoUrl: string } =>
+        person.photoUrl !== null,
+    );
+  },
+});
+
 const personRole = v.union(
   v.literal("trener"),
   v.literal("zarząd"),

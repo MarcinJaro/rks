@@ -53,6 +53,14 @@ export default function AdminPeoplePage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
   const [photoRemoved, setPhotoRemoved] = useState(false);
+  const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(
+    null,
+  );
+  const shownPhotoUrl = form.photoStorageId
+    ? pendingPreviewUrl
+    : photoRemoved
+      ? null
+      : existingPhotoUrl;
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [uploadBusy, setUploadBusy] = useState(false);
@@ -77,7 +85,11 @@ export default function AdminPeoplePage() {
     setEditorSession(activeEditorSessionRef.current);
   }
 
-  function handlePhotoUploaded(ids: Id<"_storage">[], session: number) {
+  function handlePhotoUploaded(
+    ids: Id<"_storage">[],
+    session: number,
+    previewUrl?: string,
+  ) {
     const nextPhotoId = ids[0];
     if (!nextPhotoId) return;
     if (activeEditorSessionRef.current !== session) {
@@ -88,6 +100,7 @@ export default function AdminPeoplePage() {
       removePendingUpload(form.photoStorageId);
     }
     set("photoStorageId", nextPhotoId);
+    setPendingPreviewUrl(previewUrl ?? null);
     setPhotoRemoved(false);
   }
 
@@ -304,14 +317,15 @@ export default function AdminPeoplePage() {
               </Field>
             </div>
             <div className="md:col-span-2">
-              {existingPhotoUrl && !photoRemoved && !form.photoStorageId ? (
+              {shownPhotoUrl ? (
                 <div className="mb-3 flex items-center gap-3">
                   <Image
-                    src={existingPhotoUrl}
+                    src={shownPhotoUrl}
                     alt="Aktualne zdjęcie"
-                    width={48}
-                    height={48}
-                    className="h-12 w-12 rounded-full object-cover"
+                    width={64}
+                    height={80}
+                    unoptimized={shownPhotoUrl.startsWith("blob:")}
+                    className="h-20 w-16 rounded-md object-cover"
                   />
                   <Button
                     type="button"
@@ -331,8 +345,12 @@ export default function AdminPeoplePage() {
               <FileUpload
                 label="Zdjęcie (obraz, max 10 MB)"
                 accept="image/*"
+                cropAspect={4 / 5}
+                recropUrl={shownPhotoUrl}
                 onBusyChange={setUploadBusy}
-                onUploaded={(ids) => handlePhotoUploaded(ids, editorSession)}
+                onUploaded={(ids, previewUrl) =>
+                  handlePhotoUploaded(ids, editorSession, previewUrl)
+                }
               />
             </div>
           </fieldset>

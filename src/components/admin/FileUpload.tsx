@@ -1,6 +1,7 @@
 "use client";
 
-import { ChangeEvent, useId, useRef, useState } from "react";
+import { ImageCropDialog } from "@/components/admin/ImageCropDialog";
+import { ChangeEvent, useEffect, useId, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -10,6 +11,8 @@ export function FileUpload({
   accept,
   maxSizeMb = 10,
   multiple = false,
+  cropAspect,
+  recropUrl,
   onUploaded,
   onBusyChange,
 }: {
@@ -17,7 +20,12 @@ export function FileUpload({
   accept: string;
   maxSizeMb?: number;
   multiple?: boolean;
-  onUploaded: (ids: Id<"_storage">[]) => void;
+  /** Proporcje kadru (szer./wys.) - pojedyncze zdjęcie przechodzi przez kadrowanie. */
+  cropAspect?: number;
+  /** Aktualne zdjęcie, które można wykadrować ponownie bez szukania pliku. */
+  recropUrl?: string | null;
+  /** previewUrl jest ustawiony tylko dla zdjęć wykadrowanych w przeglądarce. */
+  onUploaded: (ids: Id<"_storage">[], previewUrl?: string) => void;
   onBusyChange?: (busy: boolean) => void;
 }) {
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
@@ -26,6 +34,54 @@ export function FileUpload({
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cropSource, setCropSource] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!cropSource) return;
+    return () => URL.revokeObjectURL(cropSource);
+  }, [cropSource]);
+
+  async function uploadBlob(body: Blob, name: string) {
+    const url = await generateUploadUrl();
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": body.type },
+      body,
+    });
+    if (!response.ok) throw new Error(`Nie udało się wysłać ${name}`);
+    const { storageId } = (await response.json()) as {
+      storageId: Id<"_storage">;
+    };
+    return storageId;
+  }
+
+  async function handleCropped(blob: Blob) {
+    setBusy(true);
+    onBusyChange?.(true);
+    try {
+      const storageId = await uploadBlob(blob, "zdjęcia");
+      setCropSource(null);
+      onUploaded([storageId], URL.createObjectURL(blob));
+    } finally {
+      setBusy(false);
+      onBusyChange?.(false);
+    }
+  }
+
+  async function handleRecrop() {
+    if (!recropUrl) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const response = await fetch(recropUrl);
+      if (!response.ok) throw new Error();
+      setCropSource(URL.createObjectURL(await response.blob()));
+    } catch {
+      setError("Nie udało się wczytać aktualnego zdjęcia do kadrowania.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
@@ -52,22 +108,17 @@ export function FileUpload({
       event.target.value = "";
       return;
     }
+    if (cropAspect && files.length === 1) {
+      setCropSource(URL.createObjectURL(files[0]));
+      event.target.value = "";
+      return;
+    }
     setBusy(true);
     onBusyChange?.(true);
     const ids: Id<"_storage">[] = [];
     try {
       for (const file of files) {
-        const url = await generateUploadUrl();
-        const response = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": file.type },
-          body: file,
-        });
-        if (!response.ok) throw new Error(`Nie udało się wysłać ${file.name}`);
-        const { storageId } = (await response.json()) as {
-          storageId: Id<"_storage">;
-        };
-        ids.push(storageId);
+        ids.push(await uploadBlob(file, file.name));
       }
       onUploaded(ids);
     } catch (err) {
@@ -104,6 +155,24 @@ export function FileUpload({
         aria-invalid={error ? true : undefined}
         className="min-h-11 w-full rounded-lg border border-[#7b8b9c] bg-background p-1.5 text-sm font-normal text-[#46586b] outline-none transition-[border-color,box-shadow] file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-bold file:text-secondary-foreground focus:border-secondary focus:ring-3 focus:ring-secondary/15 disabled:cursor-not-allowed disabled:opacity-60"
       />
+      {cropAspect && recropUrl ? (
+        <button
+          type="button"
+          onClick={handleRecrop}
+          disabled={busy}
+          className="justify-self-start text-xs font-bold text-secondary underline-offset-4 hover:underline disabled:opacity-60"
+        >
+          Wykadruj ponownie aktualne zdjęcie
+        </button>
+      ) : null}
+      {cropAspect ? (
+        <ImageCropDialog
+          source={cropSource}
+          aspect={cropAspect}
+          onCancel={() => setCropSource(null)}
+          onConfirm={handleCropped}
+        />
+      ) : null}
       {busy ? (
         <p id={statusId} role="status" className="text-xs font-normal text-muted-foreground">
           Wysyłanie...

@@ -115,6 +115,14 @@ function AdminSquadsWorkspace() {
   const [reorderingId, setReorderingId] = useState<Id<"players"> | null>(null);
   const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
   const [photoRemoved, setPhotoRemoved] = useState(false);
+  const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(
+    null,
+  );
+  const shownPhotoUrl = form.photoStorageId
+    ? pendingPreviewUrl
+    : photoRemoved
+      ? null
+      : existingPhotoUrl;
   const [search, setSearch] = useState("");
   const [editorSession, setEditorSession] = useState(0);
   const activeEditorSessionRef = useRef(0);
@@ -200,7 +208,11 @@ function AdminSquadsWorkspace() {
     setEditorSession(activeEditorSessionRef.current);
   }
 
-  function handlePhotoUploaded(ids: Id<"_storage">[], session: number) {
+  function handlePhotoUploaded(
+    ids: Id<"_storage">[],
+    session: number,
+    previewUrl?: string,
+  ) {
     const nextPhotoId = ids[0];
     if (!nextPhotoId) return;
     if (activeEditorSessionRef.current !== session) {
@@ -211,7 +223,16 @@ function AdminSquadsWorkspace() {
       removePendingUpload(form.photoStorageId);
     }
     set("photoStorageId", nextPhotoId);
+    setPendingPreviewUrl(previewUrl ?? null);
     setPhotoRemoved(false);
+  }
+
+  function handleRemovePhoto() {
+    if (form.photoStorageId) {
+      removePendingUpload(form.photoStorageId);
+      set("photoStorageId", "");
+    }
+    if (existingPhotoUrl) setPhotoRemoved(true);
   }
 
   function openNewPlayer() {
@@ -476,20 +497,21 @@ function AdminSquadsWorkspace() {
               </select>
             </Field>
             <div className="md:col-span-3">
-              {existingPhotoUrl && !photoRemoved && !form.photoStorageId ? (
+              {shownPhotoUrl ? (
                 <div className="mb-3 flex items-center gap-3">
                   <Image
-                    src={existingPhotoUrl}
+                    src={shownPhotoUrl}
                     alt="Aktualne zdjęcie zawodnika"
-                    width={48}
-                    height={48}
-                    className="h-12 w-12 rounded-full object-cover"
+                    width={64}
+                    height={80}
+                    unoptimized={shownPhotoUrl.startsWith("blob:")}
+                    className="h-20 w-16 rounded-md object-cover"
                   />
                   <Button
                     type="button"
                     size="sm"
                     variant="ghost"
-                    onClick={() => setPhotoRemoved(true)}
+                    onClick={handleRemovePhoto}
                   >
                     Usuń zdjęcie
                   </Button>
@@ -503,8 +525,12 @@ function AdminSquadsWorkspace() {
               <FileUpload
                 label="Zdjęcie (obraz, max 10 MB)"
                 accept="image/*"
+                cropAspect={4 / 5}
+                recropUrl={shownPhotoUrl}
                 onBusyChange={setUploadBusy}
-                onUploaded={(ids) => handlePhotoUploaded(ids, editorSession)}
+                onUploaded={(ids, previewUrl) =>
+                  handlePhotoUploaded(ids, editorSession, previewUrl)
+                }
               />
             </div>
           </fieldset>

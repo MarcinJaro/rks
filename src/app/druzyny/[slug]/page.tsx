@@ -6,7 +6,7 @@ import { teams } from "@/data/site";
 import { getTeamRoster } from "@/data/roster";
 import { teamContacts } from "@/data/legacy";
 import { teamCampPhotos } from "@/data/campPhotos";
-import { PersonCard } from "@/components/teams/PersonCard";
+import { TeamCoaches } from "@/components/teams/TeamCoaches";
 import { TeamRoster } from "@/components/teams/TeamRoster";
 import { TeamNews } from "@/components/teams/TeamNews";
 import { TeamArticles } from "@/components/teams/TeamArticles";
@@ -69,16 +69,7 @@ export default async function TeamPage({
           />
 
           {roster && roster.coaches.length > 0 ? (
-            <div className="mt-10">
-              <h3 className="mb-4 text-2xl font-black text-white">
-                Kadra trenerska
-              </h3>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {roster.coaches.map((coach) => (
-                  <PersonCard key={coach.name} person={coach} variant="coach" />
-                ))}
-              </div>
-            </div>
+            <TeamCoaches coaches={roster.coaches} />
           ) : null}
         </div>
 
