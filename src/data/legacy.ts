@@ -54,6 +54,13 @@ export const coaches: {
     photo: null,
   },
   {
+    name: "Karol Gębski",
+    team: "Seniorzy - Liga okręgowa",
+    phone: "",
+    email: "",
+    photo: null,
+  },
+  {
     name: "Karol Kuza",
     team: "Seniorzy / Rocznik 2013 / Rocznik 2014",
     phone: "731 055 549",

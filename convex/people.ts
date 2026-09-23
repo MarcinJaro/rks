@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAdmin } from "./adminAuth";
 
@@ -178,5 +178,55 @@ export const reorder = mutation({
     if (!neighbor) return;
     await ctx.db.patch(person._id, { sortOrder: neighbor.sortOrder });
     await ctx.db.patch(neighbor._id, { sortOrder: person.sortOrder });
+  },
+});
+
+/**
+ * Dopisuje trenerów ze strony, których brakuje w panelu. Istniejących
+ * rekordów (dopasowanych po imieniu i nazwisku) nie rusza.
+ */
+export const addMissingTrainers = internalMutation({
+  args: {
+    trainers: v.array(
+      v.object({
+        name: v.string(),
+        position: v.string(),
+        teamSlug: v.optional(v.string()),
+      }),
+    ),
+  },
+  handler: async (ctx, { trainers }) => {
+    const existing = await ctx.db
+      .query("people")
+      .withIndex("by_role", (q) => q.eq("role", "trener"))
+      .collect();
+    const nameKey = (name: string) =>
+      name.toLocaleLowerCase("pl").split(/\s+/).filter(Boolean).sort().join(" ");
+    const known = new Set(existing.map((person) => nameKey(person.name)));
+    let sortOrder = existing.reduce(
+      (max, person) => Math.max(max, person.sortOrder),
+      0,
+    );
+    const added: string[] = [];
+    for (const trainer of trainers) {
+      if (known.has(nameKey(trainer.name))) continue;
+      const team = trainer.teamSlug
+        ? await ctx.db
+            .query("teams")
+            .withIndex("by_slug", (q) => q.eq("slug", trainer.teamSlug!))
+            .first()
+        : null;
+      sortOrder += 1;
+      await ctx.db.insert("people", {
+        name: trainer.name,
+        role: "trener",
+        position: trainer.position,
+        teamId: team?._id,
+        sortOrder,
+      });
+      known.add(nameKey(trainer.name));
+      added.push(trainer.name);
+    }
+    return added;
   },
 });
