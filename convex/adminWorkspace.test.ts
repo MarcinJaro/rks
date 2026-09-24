@@ -26,6 +26,8 @@ async function seedWorkspace(t: ReturnType<typeof convexTest>) {
       name: "Trener Drugi",
       role: "trener",
       teamId,
+      email: "drugi@example.com",
+      phone: "600 000 000",
       sortOrder: 2,
     });
     await ctx.db.insert("people", {
