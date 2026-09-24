@@ -1,6 +1,14 @@
-import { internalMutation, mutation, query } from "./_generated/server";
+import {
+  internalAction,
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { requireAdmin } from "./adminAuth";
+import type { Id } from "./_generated/dataModel";
 
 export const listByRole = query({
   args: {
@@ -228,5 +236,71 @@ export const addMissingTrainers = internalMutation({
       added.push(trainer.name);
     }
     return added;
+  },
+});
+
+function trainerNameKey(name: string) {
+  return name.toLocaleLowerCase("pl").split(/\s+/).filter(Boolean).sort().join(" ");
+}
+
+export const trainersWithoutPhoto = internalQuery({
+  args: { name: v.string() },
+  handler: async (ctx, { name }) => {
+    const trainers = await ctx.db
+      .query("people")
+      .withIndex("by_role", (q) => q.eq("role", "trener"))
+      .collect();
+    return trainers
+      .filter(
+        (person) =>
+          !person.photoStorageId &&
+          trainerNameKey(person.name) === trainerNameKey(name),
+      )
+      .map((person) => person._id);
+  },
+});
+
+export const setPhotoIfMissing = internalMutation({
+  args: { id: v.id("people"), storageId: v.id("_storage") },
+  handler: async (ctx, { id, storageId }) => {
+    const person = await ctx.db.get(id);
+    if (!person || person.photoStorageId) {
+      await ctx.storage.delete(storageId);
+      return false;
+    }
+    await ctx.db.patch(id, { photoStorageId: storageId });
+    return true;
+  },
+});
+
+/**
+ * Przenosi do panelu zdjęcia trenerów, które strona miała dotąd tylko jako
+ * pliki w repozytorium. Każdy wpis dostaje własną kopię pliku, bo podmiana
+ * zdjęcia w panelu kasuje poprzedni plik.
+ */
+export const importTrainerPhotos = internalAction({
+  args: { items: v.array(v.object({ name: v.string(), url: v.string() })) },
+  handler: async (ctx, { items }) => {
+    const report: string[] = [];
+    for (const { name, url } of items) {
+      const ids: Id<"people">[] = await ctx.runQuery(
+        internal.people.trainersWithoutPhoto,
+        { name },
+      );
+      for (const id of ids) {
+        const response = await fetch(url);
+        if (!response.ok) {
+          report.push(`${name}: błąd ${response.status}`);
+          continue;
+        }
+        const storageId = await ctx.storage.store(await response.blob());
+        const saved: boolean = await ctx.runMutation(
+          internal.people.setPhotoIfMissing,
+          { id, storageId },
+        );
+        report.push(`${name}: ${saved ? "dodano" : "pominięto"}`);
+      }
+    }
+    return report;
   },
 });

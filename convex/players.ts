@@ -1,8 +1,14 @@
-import { mutation, query } from "./_generated/server";
+import {
+  internalAction,
+  internalMutation,
+  mutation,
+  query,
+} from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { requireAdmin } from "./adminAuth";
 import type { QueryCtx } from "./_generated/server";
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 
 const MAX_NAME = 120;
 const MAX_NUMBER = 3;
@@ -240,5 +246,80 @@ export const reorder = mutation({
 
     await ctx.db.patch(player._id, { sortOrder: neighbor.sortOrder });
     await ctx.db.patch(neighbor._id, { sortOrder: player.sortOrder });
+  },
+});
+
+export const insertImportedRoster = internalMutation({
+  args: {
+    teamSlug: v.string(),
+    players: v.array(
+      v.object({
+        name: v.string(),
+        photoStorageId: v.optional(v.id("_storage")),
+      }),
+    ),
+  },
+  handler: async (ctx, { teamSlug, players }) => {
+    const uploads = players.flatMap((player) =>
+      player.photoStorageId ? [player.photoStorageId] : [],
+    );
+    const team = await ctx.db
+      .query("teams")
+      .withIndex("by_slug", (q) => q.eq("slug", teamSlug))
+      .unique();
+    const existing = team
+      ? await ctx.db
+          .query("players")
+          .withIndex("by_team", (q) => q.eq("teamId", team._id))
+          .first()
+      : null;
+    if (!team || existing) {
+      for (const storageId of uploads) await ctx.storage.delete(storageId);
+      return team ? "skipped: team already has players" : "skipped: no team";
+    }
+    for (const [index, player] of players.entries()) {
+      await ctx.db.insert("players", {
+        name: player.name,
+        teamId: team._id,
+        photoStorageId: player.photoStorageId,
+        sortOrder: index + 1,
+      });
+    }
+    return `imported ${players.length}`;
+  },
+});
+
+/**
+ * Przenosi do panelu kadrę, którą strona pokazywała dotąd z pliku
+ * src/data/roster.ts. Drużyna, która ma już zawodników w panelu, jest
+ * pomijana - import niczego nie nadpisuje.
+ */
+export const importTeamRoster = internalAction({
+  args: {
+    teamSlug: v.string(),
+    players: v.array(
+      v.object({ name: v.string(), photoUrl: v.optional(v.string()) }),
+    ),
+  },
+  handler: async (ctx, { teamSlug, players }): Promise<string> => {
+    const prepared: { name: string; photoStorageId?: Id<"_storage"> }[] = [];
+    for (const player of players) {
+      let photoStorageId: Id<"_storage"> | undefined;
+      if (player.photoUrl) {
+        const response = await fetch(player.photoUrl);
+        if (!response.ok) {
+          for (const done of prepared) {
+            if (done.photoStorageId) await ctx.storage.delete(done.photoStorageId);
+          }
+          throw new Error(`${player.name}: zdjęcie ${response.status}`);
+        }
+        photoStorageId = await ctx.storage.store(await response.blob());
+      }
+      prepared.push({ name: player.name, photoStorageId });
+    }
+    return await ctx.runMutation(internal.players.insertImportedRoster, {
+      teamSlug,
+      players: prepared,
+    });
   },
 });
