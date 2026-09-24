@@ -55,6 +55,40 @@ export const listTrainerPhotos = query({
   },
 });
 
+/**
+ * Publiczna lista osób danej roli - tylko pola pokazywane na stronie.
+ * Pusta tablica oznacza, że strona zostaje przy danych zapasowych z pliku.
+ */
+export const listPublic = query({
+  args: {
+    role: v.union(
+      v.literal("trener"),
+      v.literal("zarząd"),
+      v.literal("legenda"),
+      v.literal("zasłużony"),
+    ),
+  },
+  handler: async (ctx, { role }) => {
+    const people = await ctx.db
+      .query("people")
+      .withIndex("by_role", (q) => q.eq("role", role))
+      .order("asc")
+      .take(200);
+    return await Promise.all(
+      people.map(async (person) => ({
+        _id: person._id,
+        name: person.name,
+        position: person.position ?? null,
+        email: person.email ?? null,
+        phone: person.phone ?? null,
+        photoUrl: person.photoStorageId
+          ? await ctx.storage.getUrl(person.photoStorageId)
+          : null,
+      })),
+    );
+  },
+});
+
 const personRole = v.union(
   v.literal("trener"),
   v.literal("zarząd"),
@@ -89,6 +123,8 @@ export const create = mutation({
     teamId: v.optional(v.id("teams")),
     qualifications: v.optional(v.string()),
     bio: v.optional(v.string()),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
     photoStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
@@ -113,6 +149,8 @@ export const update = mutation({
     teamId: v.optional(v.union(v.id("teams"), v.null())),
     qualifications: v.optional(v.union(v.string(), v.null())),
     bio: v.optional(v.union(v.string(), v.null())),
+    email: v.optional(v.union(v.string(), v.null())),
+    phone: v.optional(v.union(v.string(), v.null())),
     photoStorageId: v.optional(v.union(v.id("_storage"), v.null())),
   },
   handler: async (ctx, { id, ...fields }) => {
@@ -299,6 +337,42 @@ export const importTrainerPhotos = internalAction({
           { id, storageId },
         );
         report.push(`${name}: ${saved ? "dodano" : "pominięto"}`);
+      }
+    }
+    return report;
+  },
+});
+
+/**
+ * Uzupełnia puste e-maile i telefony danymi, które strona miała dotąd
+ * w pliku. Wpisów z już ustawionym kontaktem nie zmienia.
+ */
+export const backfillContacts = internalMutation({
+  args: {
+    role: personRole,
+    contacts: v.array(
+      v.object({
+        name: v.string(),
+        email: v.optional(v.string()),
+        phone: v.optional(v.string()),
+      }),
+    ),
+  },
+  handler: async (ctx, { role, contacts }) => {
+    const people = await ctx.db
+      .query("people")
+      .withIndex("by_role", (q) => q.eq("role", role))
+      .collect();
+    const report: string[] = [];
+    for (const contact of contacts) {
+      for (const person of people) {
+        if (trainerNameKey(person.name) !== trainerNameKey(contact.name)) continue;
+        const patch: { email?: string; phone?: string } = {};
+        if (contact.email && !person.email) patch.email = contact.email;
+        if (contact.phone && !person.phone) patch.phone = contact.phone;
+        if (Object.keys(patch).length === 0) continue;
+        await ctx.db.patch(person._id, patch);
+        report.push(`${person.name}: ${Object.keys(patch).join(", ")}`);
       }
     }
     return report;

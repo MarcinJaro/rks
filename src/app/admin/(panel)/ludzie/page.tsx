@@ -27,6 +27,8 @@ type FormState = {
   teamId: string;
   qualifications: string;
   bio: string;
+  email: string;
+  phone: string;
   photoStorageId: Id<"_storage"> | "";
 };
 
@@ -37,6 +39,8 @@ const emptyForm: FormState = {
   teamId: "",
   qualifications: "",
   bio: "",
+  email: "",
+  phone: "",
   photoStorageId: "",
 };
 
@@ -137,6 +141,8 @@ export default function AdminPeoplePage() {
           teamId: form.teamId ? (form.teamId as Id<"teams">) : undefined,
           qualifications: form.qualifications || undefined,
           bio: form.bio || undefined,
+          email: form.email.trim() || undefined,
+          phone: form.phone.trim() || undefined,
           photoStorageId: form.photoStorageId || undefined,
         });
       } else if (editingId) {
@@ -148,6 +154,8 @@ export default function AdminPeoplePage() {
           teamId: form.teamId ? (form.teamId as Id<"teams">) : null,
           qualifications: form.qualifications || null,
           bio: form.bio || null,
+          email: form.email.trim() || null,
+          phone: form.phone.trim() || null,
           ...(form.photoStorageId
             ? { photoStorageId: form.photoStorageId }
             : photoRemoved
@@ -306,6 +314,24 @@ export default function AdminPeoplePage() {
                 className={inputClass}
               />
             </Field>
+            <Field label="E-mail (widoczny na stronie)">
+              <input
+                type="email"
+                value={form.email}
+                onChange={(event) => set("email", event.target.value)}
+                autoComplete="off"
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Telefon (widoczny na stronie)">
+              <input
+                type="tel"
+                value={form.phone}
+                onChange={(event) => set("phone", event.target.value)}
+                autoComplete="off"
+                className={inputClass}
+              />
+            </Field>
             <div className="md:col-span-2">
               <Field label="Bio">
                 <textarea
@@ -421,6 +447,8 @@ export default function AdminPeoplePage() {
                         teamId: person.teamId ?? "",
                         qualifications: person.qualifications ?? "",
                         bio: person.bio ?? "",
+                        email: person.email ?? "",
+                        phone: person.phone ?? "",
                         photoStorageId: "",
                       });
                       beginEditorSession();

@@ -1,7 +1,6 @@
 import Image from "next/image";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { Stagger, StaggerItem } from "@/components/shared/Motion";
-import { clubLegends } from "@/data/legacy";
+import { LegendsList } from "@/components/club/LegendsList";
 
 export default function FansHistoryPage() {
   return (
@@ -49,15 +48,7 @@ export default function FansHistoryPage() {
             rozpoznawalni nie tylko przy Radarowej. Ich nazwiska przypominają, że
             klub od zawsze był ważnym miejscem na sportowej mapie Warszawy.
           </p>
-          <Stagger className="mt-6 grid gap-3 sm:grid-cols-2">
-            {clubLegends.map((name) => (
-              <StaggerItem key={name}>
-                <div className="rounded-md border border-white/8 bg-card px-4 py-3 text-sm font-black text-white">
-                  {name}
-                </div>
-              </StaggerItem>
-            ))}
-          </Stagger>
+          <LegendsList />
         </div>
       </section>
     </>

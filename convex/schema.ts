@@ -103,6 +103,8 @@ export default defineSchema({
     teamId: v.optional(v.id("teams")),
     qualifications: v.optional(v.string()),
     bio: v.optional(v.string()),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
     sortOrder: v.number(),
   })
     .index("by_role", ["role", "sortOrder"])
