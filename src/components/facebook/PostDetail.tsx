@@ -2,8 +2,10 @@
 
 import { ArticleBody } from "@/components/articles/ArticleBody";
 import { ArticleGallery } from "@/components/articles/ArticleGallery";
+import { Lightbox } from "@/components/shared/Lightbox";
 import Link from "next/link";
-import { ArrowLeft, PlayCircle } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, Expand, PlayCircle } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { formatDate } from "@/lib/utils";
@@ -21,6 +23,7 @@ export function PostDetail({ slug }: { slug: string }) {
 
 function LiveDetail({ slug }: { slug: string }) {
   const post = useQuery(api.feed.getPostBySlug, { slug });
+  const [heroZoomed, setHeroZoomed] = useState(false);
 
   if (post === undefined) {
     return <DetailShell>Ładowanie wpisu…</DetailShell>;
@@ -94,7 +97,7 @@ function LiveDetail({ slug }: { slug: string }) {
       ) : heroUrl ? (
         // Na stronie wpisu liczy się CAŁA grafika (składy, plakaty) - żadnego
         // kadrowania: obraz w naturalnych proporcjach, ograniczony wysokością.
-        <div className="relative mx-auto mt-8 w-fit max-w-4xl">
+        <div className="group relative mx-auto mt-8 w-fit max-w-4xl">
           <Image
             src={heroUrl}
             alt={title}
@@ -120,12 +123,29 @@ function LiveDetail({ slug }: { slug: string }) {
                 <PlayCircle size={44} />
               </span>
             </a>
-          ) : null}
+          ) : (
+            <button
+              type="button"
+              onClick={() => setHeroZoomed(true)}
+              aria-label="Powiększ zdjęcie"
+              className="absolute inset-0 cursor-zoom-in rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+            >
+              <span className="absolute bottom-3 right-3 grid size-10 place-items-center rounded-full bg-black/60 text-white opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                <Expand size={18} />
+              </span>
+            </button>
+          )}
+          <Lightbox
+            images={[{ src: heroUrl, alt: title }]}
+            index={heroZoomed ? 0 : null}
+            onIndexChange={(next) => setHeroZoomed(next !== null)}
+            title={title}
+          />
         </div>
       ) : null}
 
       {post.source === "cms" && post.contentJson ? (
-        <div className="mx-auto mt-10 max-w-3xl text-white/90"><ArticleBody document={post.contentJson} imageUrls={post.inlineImageUrls} /></div>
+        <div className="mx-auto mt-10 max-w-3xl text-white/90"><ArticleBody document={post.contentJson} imageUrls={post.inlineImageUrls} title={title} /></div>
       ) : post.contentHtml ? (
         <div className="mx-auto mt-10 max-w-3xl [&_a]:font-bold [&_a]:text-accent [&_a]:underline [&_.hashtag]:font-bold [&_.hashtag]:text-accent">
           {parsePostBody(removeEmoji(post.contentHtml), title).map(

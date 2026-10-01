@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Expand } from "lucide-react";
-import * as Dialog from "@radix-ui/react-dialog";
+import { Lightbox } from "@/components/shared/Lightbox";
 
 export function ArticleGallery({
   urls,
@@ -116,64 +116,19 @@ export function ArticleGallery({
           </button>
         ))}
       </div>
-      <Dialog.Root
-        open={expanded !== null}
-        onOpenChange={(open) => {
-          if (!open) setExpanded(null);
+      <Lightbox
+        images={urls.map((src, i) => ({
+          src,
+          alt: `${title} — zdjęcie ${i + 1}`,
+        }))}
+        index={expanded}
+        onIndexChange={(next) => {
+          // Po zamknięciu karuzela pokazuje ostatnio oglądane zdjęcie.
+          if (next === null && expanded !== null) go(expanded);
+          setExpanded(next);
         }}
-      >
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-[110] bg-black/95" />
-          <Dialog.Content
-            aria-describedby={undefined}
-            className="fixed inset-3 z-[111] flex flex-col items-center justify-center text-white outline-none"
-            onKeyDown={(e) => {
-              if (e.key === "ArrowRight")
-                setExpanded((i) => Math.min(urls.length - 1, (i ?? 0) + 1));
-              if (e.key === "ArrowLeft")
-                setExpanded((i) => Math.max(0, (i ?? 0) - 1));
-            }}
-          >
-            <Dialog.Title className="sr-only">{title} — galeria</Dialog.Title>
-            <Dialog.Close className="absolute right-2 top-2 rounded-full bg-white px-5 py-3 font-bold text-black">
-              Zamknij
-            </Dialog.Close>
-            {expanded !== null && (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={urls[expanded]}
-                  alt={`${title} — zdjęcie ${expanded + 1}`}
-                  className="max-h-[80dvh] max-w-full object-contain"
-                />
-                <div className="mt-4 flex items-center gap-6">
-                  <button
-                    type="button"
-                    aria-label="Poprzednie zdjęcie"
-                    className={arrowClass}
-                    disabled={expanded === 0}
-                    onClick={() => setExpanded(expanded - 1)}
-                  >
-                    <ChevronLeft />
-                  </button>
-                  <span aria-live="polite">
-                    {expanded + 1} / {urls.length}
-                  </span>
-                  <button
-                    type="button"
-                    aria-label="Następne zdjęcie"
-                    className={arrowClass}
-                    disabled={expanded === urls.length - 1}
-                    onClick={() => setExpanded(expanded + 1)}
-                  >
-                    <ChevronRight />
-                  </button>
-                </div>
-              </>
-            )}
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+        title={title}
+      />
     </section>
   );
 }

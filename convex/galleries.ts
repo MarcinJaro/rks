@@ -1,7 +1,26 @@
 import { mutation, query } from "./_generated/server";
+import type { QueryCtx } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { requireAdmin } from "./adminAuth";
 import { slugify } from "./slugify";
+
+/** Galeria do strony publicznej: adresy zdjęć i drużyna, bez pustych plików. */
+async function publicGallery(ctx: QueryCtx, gallery: Doc<"galleries">) {
+  const team = gallery.teamId ? await ctx.db.get(gallery.teamId) : null;
+  const imageUrls = await Promise.all(
+    gallery.imageIds.map((id) => ctx.storage.getUrl(id)),
+  );
+  return {
+    _id: gallery._id,
+    title: gallery.title.trim(),
+    slug: gallery.slug,
+    date: gallery.date,
+    description: gallery.description?.trim() || null,
+    team: team ? { slug: team.slug, name: team.name } : null,
+    imageUrls: imageUrls.filter((url): url is string => url !== null),
+  };
+}
 
 export const latest = query({
   args: { limit: v.optional(v.number()) },
@@ -10,15 +29,30 @@ export const latest = query({
       .query("galleries")
       .withIndex("by_date")
       .order("desc")
-      .take(limit || 12);
+      .take(Math.min(limit || 12, 50));
 
     return await Promise.all(
-      galleries.map(async (gallery) => ({
-        ...gallery,
-        imageUrls: await Promise.all(
-          gallery.imageIds.map((id) => ctx.storage.getUrl(id)),
-        ),
-      })),
+      galleries.map((gallery) => publicGallery(ctx, gallery)),
+    );
+  },
+});
+
+/** Galerie przypisane w panelu do drużyny - pokazywane na jej stronie. */
+export const listByTeamSlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, { slug }) => {
+    const team = await ctx.db
+      .query("teams")
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .first();
+    if (!team) return [];
+    const galleries = await ctx.db
+      .query("galleries")
+      .withIndex("by_team", (q) => q.eq("teamId", team._id))
+      .take(50);
+    galleries.sort((a, b) => b.date - a.date);
+    return await Promise.all(
+      galleries.map((gallery) => publicGallery(ctx, gallery)),
     );
   },
 });

@@ -1,4 +1,7 @@
-import { Fragment, type ReactNode } from "react";
+"use client";
+
+import { Fragment, useState, type ReactNode } from "react";
+import { Lightbox, type LightboxImage } from "@/components/shared/Lightbox";
 import {
   parseArticleDocument,
   safeArticleLink,
@@ -8,10 +11,15 @@ import {
 export function ArticleBody({
   document,
   imageUrls,
+  title = "Zdjęcia w artykule",
 }: {
   document: string;
   imageUrls: Record<string, string | null>;
+  title?: string;
 }) {
+  const [zoomed, setZoomed] = useState<number | null>(null);
+  // Zdjęcia z treści w kolejności czytania - lightbox przewija między nimi.
+  const zoomable: LightboxImage[] = [];
   let root: ArticleNode;
   try {
     root = parseArticleDocument(document);
@@ -66,20 +74,40 @@ export function ArticleBody({
               ? String(node.attrs.storageId)
               : `legacy:${node.attrs?.legacyIndex}`
           ];
-        return url ? (
+        if (!url) return null;
+        const alt = String(node.attrs?.alt ?? "");
+        const caption = node.attrs?.title ? String(node.attrs.title) : null;
+        const position = zoomable.push({ src: url, alt, caption }) - 1;
+        return (
           <figure key={index} style={{ width: `${node.attrs?.width ?? 100}%` }}>
-            {/* Uploaded media has dynamic natural dimensions. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt={String(node.attrs?.alt ?? "")} loading="lazy" />
-            {node.attrs?.title ? (
-              <figcaption>{node.attrs.title}</figcaption>
-            ) : null}
+            <button
+              type="button"
+              className="article-zoom"
+              aria-label={alt ? `Powiększ zdjęcie: ${alt}` : "Powiększ zdjęcie"}
+              onClick={() => setZoomed(position)}
+            >
+              {/* Uploaded media has dynamic natural dimensions. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt={alt} loading="lazy" />
+            </button>
+            {caption ? <figcaption>{caption}</figcaption> : null}
           </figure>
-        ) : null;
+        );
       }
       default:
         return null;
     }
   }
-  return <div className="article-prose">{render(root, 0)}</div>;
+  const body = render(root, 0);
+  return (
+    <>
+      <div className="article-prose">{body}</div>
+      <Lightbox
+        images={zoomable}
+        index={zoomed}
+        onIndexChange={setZoomed}
+        title={title}
+      />
+    </>
+  );
 }

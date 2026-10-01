@@ -67,6 +67,19 @@ export const getBySlug = query({
   },
 });
 
+/** Zdjęcie grupowe drużyny wgrane w panelu (Drużyny → zdjęcie). */
+export const groupPhotoBySlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, { slug }) => {
+    const team = await ctx.db
+      .query("teams")
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .first();
+    if (!team?.groupPhotoId) return null;
+    return await ctx.storage.getUrl(team.groupPhotoId);
+  },
+});
+
 export const upsert = mutation({
   args: {
     name: v.string(),

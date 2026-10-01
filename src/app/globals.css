@@ -234,3 +234,14 @@ a {
 @media (max-width: 640px) { .article-prose figure { width: 100% !important; } }
 
 .admin-shell .article-prose a { color: var(--secondary); }
+
+/* Lightbox: miękkie wejście okna i każdego kolejnego zdjęcia. */
+@keyframes lightbox-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lightbox-zoom-in { from { transform: scale(.96); } to { transform: scale(1); } }
+.lightbox-fade[data-state="open"] { animation: lightbox-fade-in .2s ease-out; }
+.lightbox-zoom { animation: lightbox-zoom-in .28s cubic-bezier(.2,.8,.2,1); }
+@media (prefers-reduced-motion: reduce) {
+  .lightbox-fade[data-state="open"], .lightbox-zoom { animation: none; }
+}
+.article-prose .article-zoom { display: block; width: 100%; cursor: zoom-in; border-radius: .65rem; }
+.article-prose .article-zoom:focus-visible { outline: 3px solid var(--primary); outline-offset: 4px; }
