@@ -41,6 +41,8 @@ export const boardMembers = [
 
 export const coaches: {
   name: string;
+  /** Inna pisownia tej samej osoby w panelu - do dopasowania zdjęcia. */
+  aliases?: string[];
   team: string;
   phone: string;
   email: string;
@@ -153,6 +155,7 @@ export const coaches: {
   },
   {
     name: "Pavlo Pytko",
+    aliases: ["Pavel Pytko"],
     team: "Rocznik 2017",
     phone: "733 899 646",
     email: "",

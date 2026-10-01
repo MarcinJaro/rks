@@ -4,15 +4,36 @@ import Image from "next/image";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { coaches } from "@/data/legacy";
-import { trainerPhotoMap, withTrainerPhoto } from "@/lib/trainerPhotos";
+import {
+  panelOnlyTrainers,
+  trainerPhotoMap,
+  withTrainerPhoto,
+} from "@/lib/trainerPhotos";
 
 export function StaffGrid() {
-  const photos = trainerPhotoMap(useQuery(api.people.listTrainerPhotos));
+  const trainers = useQuery(api.people.listTrainersPublic);
+  const photos = trainerPhotoMap(trainers);
+  // Osoby dodane tylko w panelu dochodzą na koniec listy.
+  const staff = [
+    ...coaches.map((coach) => ({
+      ...coach,
+      photo: withTrainerPhoto(coach, photos, coach.photo),
+    })),
+    ...panelOnlyTrainers(trainers, coaches).map((trainer) => ({
+      name: trainer.name,
+      team: [trainer.position, ...trainer.teams.map((team) => team.name)]
+        .filter(Boolean)
+        .join(" · "),
+      phone: trainer.phone ?? "",
+      email: trainer.email ?? "",
+      photo: trainer.photoUrl,
+    })),
+  ];
 
   return (
     <section className="container-page grid gap-5 py-12 sm:grid-cols-2 lg:grid-cols-3">
-      {coaches.map((coach) => {
-        const photo = withTrainerPhoto(coach, photos, coach.photo);
+      {staff.map((coach) => {
+        const photo = coach.photo;
         return (
           <article key={coach.name} className="overflow-hidden rounded-[24px] border border-white/8 bg-card">
             {photo ? (

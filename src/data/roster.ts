@@ -2,6 +2,7 @@ import { coaches } from "./legacy";
 
 export type RosterPerson = {
   name: string;
+  aliases?: string[];
   number?: string;
   photoUrl?: string;
 };
@@ -119,7 +120,11 @@ function slugsForAssignment(assignment: string) {
 function coachesForTeam(slug: string): RosterPerson[] {
   return coaches
     .filter((coach) => slugsForAssignment(coach.team).includes(slug))
-    .map((coach) => ({ name: coach.name, photoUrl: coach.photo ?? undefined }));
+    .map((coach) => ({
+      name: coach.name,
+      aliases: coach.aliases,
+      photoUrl: coach.photo ?? undefined,
+    }));
 }
 
 export function getTeamRoster(slug: string): TeamRoster | null {

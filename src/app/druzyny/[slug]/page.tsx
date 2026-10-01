@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import { Mail, Phone } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { teams } from "@/data/site";
@@ -10,6 +9,8 @@ import { TeamCoaches } from "@/components/teams/TeamCoaches";
 import { TeamRoster } from "@/components/teams/TeamRoster";
 import { TeamNews } from "@/components/teams/TeamNews";
 import { TeamArticles } from "@/components/teams/TeamArticles";
+import { TeamGalleries } from "@/components/teams/TeamGalleries";
+import { TeamPhoto } from "@/components/teams/TeamPhoto";
 import { telHref } from "@/lib/phone";
 
 export function generateStaticParams() {
@@ -41,36 +42,21 @@ export default async function TeamPage({
       />
       <section className="container-page grid gap-8 py-12 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0">
-          {campPhoto ? (
-            <figure className="mb-10 overflow-hidden rounded-[24px] border border-white/8 bg-card shadow-sm">
-              <Image
-                src={campPhoto.src}
-                alt={`${team.name} - zdjęcie grupowe z obozu letniego`}
-                width={campPhoto.width}
-                height={campPhoto.height}
-                sizes="(min-width: 1024px) 720px, 100vw"
-                className={
-                  campPhoto.height > campPhoto.width
-                    ? "mx-auto h-auto w-full max-w-xl"
-                    : "h-auto w-full"
-                }
-                priority
-              />
-              <figcaption className="px-5 py-4 text-sm font-bold text-muted-foreground">
-                Obóz letni 2026
-              </figcaption>
-            </figure>
-          ) : null}
+          <TeamPhoto
+            slug={team.slug}
+            teamName={team.name}
+            campPhoto={campPhoto}
+          />
 
           <TeamRoster
             slug={team.slug}
             fallback={roster?.players ?? []}
-            coachCount={roster?.coaches.length ?? 0}
+            coaches={roster?.coaches ?? []}
           />
 
-          {roster && roster.coaches.length > 0 ? (
-            <TeamCoaches coaches={roster.coaches} />
-          ) : null}
+          <TeamCoaches slug={team.slug} coaches={roster?.coaches ?? []} />
+
+          <TeamGalleries slug={team.slug} />
         </div>
 
         <aside className="space-y-5">

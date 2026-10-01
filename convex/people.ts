@@ -29,9 +29,9 @@ export const listByRole = query({
 });
 
 /**
- * Zdjęcia trenerów wgrane w panelu. Skład sztabu na stronie nadal pochodzi
- * ze statycznej listy (z telefonami i przypisaniami) - stąd bierzemy tylko
- * zdjęcie, dopasowane po imieniu i nazwisku.
+ * Zdjęcia trenerów wgrane w panelu, dopasowywane po imieniu i nazwisku.
+ * Strona korzysta już z `listTrainersPublic`; to zapytanie zostaje dla kart
+ * otwartych jeszcze przed wdrożeniem - do usunięcia przy kolejnych zmianach.
  */
 export const listTrainerPhotos = query({
   args: {},
@@ -51,6 +51,44 @@ export const listTrainerPhotos = query({
     return withPhotos.filter(
       (person): person is { name: string; photoUrl: string } =>
         person.photoUrl !== null,
+    );
+  },
+});
+
+/**
+ * Trenerzy z panelu z drużyną i kontaktem. Strona łączy ich ze statyczną
+ * listą sztabu: dokłada zdjęcia, nowe osoby i przypisania do drużyn.
+ */
+export const listTrainersPublic = query({
+  args: {},
+  handler: async (ctx) => {
+    const trainers = await ctx.db
+      .query("people")
+      .withIndex("by_role", (q) => q.eq("role", "trener"))
+      .take(500);
+    const teamIds = [
+      ...new Set(trainers.flatMap((person) => (person.teamId ? [person.teamId] : []))),
+    ];
+    const teams = new Map(
+      await Promise.all(
+        teamIds.map(async (id) => [id, await ctx.db.get(id)] as const),
+      ),
+    );
+    return await Promise.all(
+      trainers.map(async (person) => {
+        const team = person.teamId ? teams.get(person.teamId) : null;
+        return {
+          name: person.name,
+          position: person.position ?? null,
+          phone: person.phone ?? null,
+          email: person.email ?? null,
+          teamSlug: team?.slug ?? null,
+          teamName: team?.name ?? null,
+          photoUrl: person.photoStorageId
+            ? await ctx.storage.getUrl(person.photoStorageId)
+            : null,
+        };
+      }),
     );
   },
 });

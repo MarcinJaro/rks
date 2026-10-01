@@ -5,6 +5,8 @@ export type CardPerson = {
   name: string;
   number?: string;
   photoUrl?: string | null;
+  /** Funkcja z panelu (np. „Kierownik 2 zespołu seniorów”). */
+  position?: string;
 };
 
 export function PersonCard({
@@ -50,7 +52,8 @@ export function PersonCard({
           {person.name}
         </h3>
         <p className="mt-2 text-xs font-bold uppercase text-muted-foreground">
-          {variant === "coach" ? "Sztab szkoleniowy" : "RKS Okęcie"}
+          {person.position ??
+            (variant === "coach" ? "Sztab szkoleniowy" : "RKS Okęcie")}
         </p>
       </div>
     </article>

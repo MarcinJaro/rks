@@ -4,6 +4,8 @@ import { useQuery } from "convex/react";
 import { Camera, Shield, UsersRound } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { PersonCard, type CardPerson } from "@/components/teams/PersonCard";
+import { useTeamCoaches } from "@/components/teams/TeamCoaches";
+import type { RosterPerson } from "@/data/roster";
 
 /**
  * Kadra drużyny. Panel administracyjny jest źródłem nadrzędnym: jeśli klub
@@ -13,13 +15,14 @@ import { PersonCard, type CardPerson } from "@/components/teams/PersonCard";
 export function TeamRoster({
   slug,
   fallback,
-  coachCount,
+  coaches,
 }: {
   slug: string;
   fallback: CardPerson[];
-  coachCount: number;
+  coaches: RosterPerson[];
 }) {
   const managed = useQuery(api.players.listByTeamSlug, { slug });
+  const coachCount = useTeamCoaches(slug, coaches).length;
   const players: CardPerson[] =
     managed && managed.length > 0 ? managed : fallback;
   const photoCount = players.filter((player) => player.photoUrl).length;
