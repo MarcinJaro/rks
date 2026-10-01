@@ -1,12 +1,14 @@
 # Cutover domeny rksokecie.pl na nową stronę (Vercel)
 
-> **STATUS 2026-09-01: WYKONANE** (kroki 2–5). Zweryfikowane na żywo:
+> **STATUS 2026-09-02: CUTOVER WYKONANY.** Zweryfikowane na żywo:
 > apex → 76.76.21.21 (200, server: Vercel, tytuł OK), www → 308 na apex,
 > stare URL-e → 308 na nowe (próbka OK), sitemap/robots OK, poczta nietknięta,
-> legacy ma X-Robots-Tag noindex (ale origin 403 — czeka na krok 1).
-> **Zostało:** krok 1 (alias legacy w panelu CyberFolks — klient) i krok 6
-> (GSC: property + sitemap — ręcznie). Uwaga: konto Cloudflare ma zaległość
-> $6.20 (overdue) — opłacić w Billing.
+> a najstarszy serwis `rksokecie.ayz.pl` działa niezależnie i zostaje bez zmian.
+> `legacy.rksokecie.pl` ma już `X-Robots-Tag: noindex, nofollow`, ale zwraca
+> 403. Uruchomienie archiwum Drupala zostało świadomie odłożone jako nieistotne
+> dla bieżącej produkcji. **Zostało:** migracja frontu na Clerk prod oraz GSC
+> (property + sitemap — ręcznie). Uwaga: konto Cloudflare ma zaległość $6.20
+> (overdue) — opłacić w Billing.
 
 Stan przed: apex/www za proxy Cloudflare (188.114.x.x) → stary Drupal
 (origin 185.208.164.60, CyberFolks). Poczta na CyberFolks - rekordy mail/smtp/
@@ -14,13 +16,13 @@ pop/ftp szare, MX bez zmian. Nowa strona: projekt `rks` na koncie Vercel
 `marcinjaros-projects` (rks-eta.vercel.app), backend Convex prod
 (brazen-blackbird-144 - potwierdzone w bundlu).
 
-## Kolejność (legacy PRZED przełączeniem apexu)
+## Kolejność historyczna cutoveru
 
-### 1. CyberFolks (panel) - alias dla starej strony
-Origin zwraca 403 dla nieznanych hostów (sprawdzone: `Host: legacy.rksokecie.pl`
-→ 403), więc sam rekord DNS nie wystarczy:
-- Dodaj domenę dodatkową / alias **legacy.rksokecie.pl** wskazującą na katalog
-  starej strony (ten sam co rksokecie.pl dziś).
+### 1. Archiwum Drupal pod legacy - ODROCZONE
+Origin zwraca 403 dla hosta `legacy.rksokecie.pl`. Nie blokuje to nowej strony,
+panelu ani najstarszego serwisu AYZ, dlatego archiwum pozostaje wyłączone do
+czasu wyboru bezpiecznej metody publikacji. Szczegóły są w sekcji „Trzy osobne
+serwisy i decyzja o legacy” na końcu dokumentu.
 
 ### 2. Cloudflare - subdomena legacy + noindex
 - DNS: `A  legacy  185.208.164.60` - **proxy WŁĄCZONE** (pomarańczowa
@@ -28,8 +30,9 @@ Origin zwraca 403 dla nieznanych hostów (sprawdzone: `Host: legacy.rksokecie.pl
 - Rules → Transform Rules → **Modify Response Header**:
   - Warunek: Hostname equals `legacy.rksokecie.pl`
   - Akcja: Set static header `X-Robots-Tag` = `noindex, nofollow`
-- Test: `curl -sI https://legacy.rksokecie.pl | grep -i x-robots` oraz czy
-  strona się otwiera.
+- Test bieżącego stanu: `curl -sI https://legacy.rksokecie.pl | grep -i
+  x-robots` zwraca `noindex, nofollow`; HTTP 403 jest oczekiwany, dopóki
+  publikacja archiwum pozostaje odroczona.
 
 ### 3. Vercel (konto marcinjaro, projekt rks) - domeny
 Settings → Domains:
@@ -50,14 +53,16 @@ Settings → Domains:
 - Stary URL (np. `/dla-rodzicow`) → 308 na `/zawodnik`.
 - Panel `/admin` działa (Clerk noble-lizard-59 + ADMIN_EMAILS ustawione na
   prod Convex - potwierdzone).
-- legacy.rksokecie.pl działa i ma X-Robots-Tag; zapasowo stara strona żyje też
-  na http://rksokecie.ayz.pl (302 względne, sprawdzone).
+- http://rksokecie.ayz.pl → względne 302 do `news.php`; jest to niezależny,
+  najstarszy serwis i zostaje bez zmian.
+- https://legacy.rksokecie.pl → 403; nagłówek `X-Robots-Tag: noindex, nofollow`
+  działa. Udostępnienie starego Drupala jest odroczone.
 
 ### 6. Po cutoverze (ręcznie, GSC)
 - Google Search Console: property rksokecie.pl → wyślij sitemap
   `https://rksokecie.pl/sitemap.xml`.
-- (Opcjonalnie) w stopce podmienić „Link do starej strony" na
-  https://legacy.rksokecie.pl, gdy zadziała.
+- Stopka ma nadal prowadzić wyłącznie do http://rksokecie.ayz.pl. Nie
+  podmieniamy tego odnośnika na `legacy.rksokecie.pl`.
 
 ## Audyt SEO przed cutoverem (2026-08-29, na rks-eta)
 
@@ -85,31 +90,55 @@ marcin@creativerebels.pl):
   tych z domain_intent (32vpeprq60ew vs kero20dtgss8) - poprawione.
 - Szablon JWT `convex` z claimem `email` (wymagany przez ADMIN_EMAILS).
 - `sign_up_mode = restricted` na PROD i DEV (audyt: otwarta rejestracja).
-- Admin na prod: jaroszewicz.marcin84@gmail.com (`user_3ImtriwBEtm68WW0E7aEjVNdsw9`),
-  logowanie kodem mailowym lub hasłem. Zgodny z ADMIN_EMAILS na Convex prod.
+- Konta administratorów na prod (wszystkie zgodne z `ADMIN_EMAILS` w Convex):
+  - jaroszewicz.marcin84@gmail.com (`user_3ImtriwBEtm68WW0E7aEjVNdsw9`),
+  - j.kilman@rksokecie.pl (`user_3ImzrJRwT1sLIglt8J0gWn2RQSG`),
+  - g.malinowski@rksokecie.pl (`user_3ImzrIpFFRGVRGsYSHVj5gVguYv`).
+  Adresy są zweryfikowane. Konta nie mają ustawionych haseł; podstawową
+  metodą logowania jest kod e-mail.
 - Convex prod: `convex/auth.config.ts` czyta CLERK_JWT_ISSUER_DOMAIN
   (= https://clerk.rksokecie.pl) ORAZ CLERK_JWT_ISSUER_DOMAIN_LEGACY
   (= dev), więc oba tokeny są ważne w trakcie przełączania.
 
 ### Do zrobienia (wymaga konta Vercel `marcinjaro`, projekt `rks`)
-1. Settings → Environment Variables (Production):
-   - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = klucz `pk_live_...` instancji prod
-   - CLERK_SECRET_KEY = klucz `sk_live_...` (pobierz: `clerk env pull
+1. Settings → Environment Variables:
+   - przywrócić `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/admin/sign-in`,
+   - potwierdzić `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` = klucz `pk_live_...`,
+   - potwierdzić `CLERK_SECRET_KEY` = klucz `sk_live_...` (pobierz: `clerk env pull
      --app app_3HQ7z1uv1FL1SnL0nSVW2perpP7 --instance
-     ins_3ImsknPVJmVDf5mmKxUstt2dkeY --file /tmp/clerk-prod.env`)
+     ins_3ImsknPVJmVDf5mmKxUstt2dkeY --file /tmp/clerk-prod.env`),
+   - klucze `pk_live_` i `sk_live_` ograniczyć do środowiska Production, a nie
+     „Production and Preview”.
 2. Redeploy produkcji.
-3. Weryfikacja: /admin/sign-in ładuje z clerk.rksokecie.pl, logowanie kodem
-   na jaroszewicz.marcin84@gmail.com, panel działa.
+3. Weryfikacja: bundel nie zawiera `pk_test_`, formularz nie pokazuje
+   „Development mode”, `/admin/sign-in` ładuje z clerk.rksokecie.pl, logowanie
+   kodem e-mail działa i panel ma połączenie z Convex.
 4. Po stabilizacji: `npx convex env remove CLERK_JWT_ISSUER_DOMAIN_LEGACY --prod`.
 5. Google OAuth na prod nieskonfigurowany (wymaga własnego OAuth clienta) -
    niepotrzebny, logowanie mailowe wystarcza.
 
-## Legacy - KOREKTA po rozmowie z klientem
-`legacy.rksokecie.pl` ma pokazywać Drupala działającego do 1.09, NIE
-rksokecie.ayz.pl (to inny, dużo starszy serwis - zostaje bez zmian). Stary
-serwer 185.208.164.60 nadal serwuje tego Drupala pod hostem `rksokecie.pl`
-(HTTPS 200, 85 KB; 143 linki względne vs 18 absolutnych - nawigacja zadziała).
-Origin Rule w Cloudflare: Hostname eq legacy.rksokecie.pl → Host Header
-Override = `rksokecie.pl`. DNS (A, proxied) i Transform Rule noindex już są.
-Token CF z 2026-09-02 ma tylko Zone.DNS - Config Rules trzeba dodać albo
-kliknąć w dashboardzie.
+## Trzy osobne serwisy i decyzja o legacy
+
+1. `https://rksokecie.pl` - nowa strona na Vercelu.
+2. `http://rksokecie.ayz.pl/news.php` - najstarsza, osobna strona; pozostaje
+   bez zmian i jest jedynym starym serwisem linkowanym ze stopki.
+3. `https://legacy.rksokecie.pl` - planowany adres zamrożonego Drupala
+   odciętego 1.09; ma pozostać `noindex`, ale jego publikacja jest odroczona.
+
+Stan techniczny legacy z audytu 2026-09-02:
+
+- DNS `legacy` jest proxied przez Cloudflare, a Transform Rule poprawnie dodaje
+  `X-Robots-Tag: noindex, nofollow` również do odpowiedzi 403.
+- Origin `185.208.164.60` zwraca Drupala 7.97 tylko dla nagłówka Host
+  `rksokecie.pl`; dla Host `legacy.rksokecie.pl` zwraca 403.
+- Sam Host Header Override na `rksokecie.pl` nie daje kompletnego archiwum:
+  Drupal generuje dziesiątki absolutnych adresów CSS, JS, obrazów i dokumentów
+  do `https://rksokecie.pl/sites/...`, które na nowej stronie zwracają 404.
+- To nadal dynamiczny, niewspierany Drupal z dostępnym logowaniem i XML-RPC,
+  a nie bezpieczna statyczna kopia.
+
+Decyzja: na ten moment niczego nie zmieniamy w routingu `legacy`. Jeżeli temat
+wróci, preferowana jest statyczna kopia Drupala. Wariant z żywym PHP wymaga
+aliasu hosta w CyberFolks, poprawienia adresów zasobów oraz blokady logowania,
+XML-RPC, administracji i metod zapisu. Nie wolno kierować `legacy` do AYZ ani
+zmieniać działającego serwisu `rksokecie.ayz.pl`.
