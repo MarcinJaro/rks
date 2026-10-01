@@ -2,6 +2,12 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 import { requireAdmin } from "./adminAuth";
+import {
+  articleImageIds,
+  legacyImageUrls,
+  legacyImageIndexes,
+  parseArticleDocument,
+} from "../src/lib/articleDocument";
 import { slugify } from "./slugify";
 
 export const listPublished = query({
@@ -52,10 +58,12 @@ export const listPublishedByTeamSlug = query({
 export const getBySlug = query({
   args: { slug: v.string() },
   handler: async (ctx, { slug }) => {
-    return await ctx.db
+    const article = await ctx.db
       .query("articles")
       .withIndex("by_slug", (q) => q.eq("slug", slug))
       .first();
+    if (article?.status !== "published") return null;
+    return article;
   },
 });
 
@@ -75,15 +83,51 @@ export const adminList = query({
   },
 });
 
+export const adminMedia = query({
+  args: { id: v.id("articles") },
+  returns: v.record(v.string(), v.union(v.string(), v.null())),
+  handler: async (ctx, { id }) => {
+    await requireAdmin(ctx);
+    const article = await ctx.db.get(id);
+    if (!article) return {};
+    const ids = [
+      ...new Set([
+        ...(article.inlineImageIds ?? []),
+        ...(article.galleryIds ?? []),
+        ...(article.imageStorageId ? [article.imageStorageId] : []),
+      ]),
+    ];
+    return {
+      ...Object.fromEntries(
+        legacyImageUrls(article.contentHtml).map((url, index) => [
+          `legacy:${index}`,
+          url,
+        ]),
+      ),
+      ...Object.fromEntries(
+        await Promise.all(
+          ids.map(async (storageId) => [
+            storageId,
+            await ctx.storage.getUrl(storageId),
+          ]),
+        ),
+      ),
+    };
+  },
+});
+
 export const removeArticle = mutation({
   args: { id: v.id("articles") },
   handler: async (ctx, { id }) => {
     await requireAdmin(ctx);
     const article = await ctx.db.get(id);
     if (!article) return;
-    if (article.imageStorageId) await ctx.storage.delete(article.imageStorageId);
-    if (article.ogImageStorageId) await ctx.storage.delete(article.ogImageStorageId);
-    for (const imageId of article.galleryIds ?? []) {
+    for (const imageId of new Set([
+      ...(article.galleryIds ?? []),
+      ...(article.inlineImageIds ?? []),
+      ...(article.imageStorageId ? [article.imageStorageId] : []),
+      ...(article.ogImageStorageId ? [article.ogImageStorageId] : []),
+    ])) {
       await ctx.storage.delete(imageId);
     }
     await ctx.db.delete(id);
@@ -92,6 +136,10 @@ export const removeArticle = mutation({
 
 export const saveDraft = mutation({
   args: {
+    id: v.optional(v.id("articles")),
+    contentJson: v.optional(v.string()),
+    inlineImageIds: v.optional(v.array(v.id("_storage"))),
+    galleryIds: v.optional(v.array(v.id("_storage"))),
     title: v.string(),
     slug: v.string(),
     content: v.string(),
@@ -104,8 +152,65 @@ export const saveDraft = mutation({
     imageStorageId: v.optional(v.id("_storage")),
     youtubeUrl: v.optional(v.string()),
   },
+  returns: v.id("articles"),
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
+    const existing = args.id ? await ctx.db.get(args.id) : null;
+    if (args.id && !existing) throw new Error("Artykuł już nie istnieje");
+    if (
+      (args.galleryIds?.length ?? 0) > 60 ||
+      (args.inlineImageIds?.length ?? 0) > 60
+    )
+      throw new Error("Maksymalnie 60 zdjęć w galerii i 60 w treści");
+    if (args.contentJson) {
+      const document = parseArticleDocument(args.contentJson);
+      const ids = articleImageIds(document);
+      const legacyIndexes = legacyImageIndexes(document);
+      const oldUrls = legacyImageUrls(existing?.contentHtml ?? "");
+      if (legacyIndexes.some((index) => !oldUrls[index]))
+        throw new Error("Nieprawidłowe odwołanie do starszego zdjęcia");
+      if (
+        ids.some(
+          (id) => !(args.inlineImageIds as string[] | undefined)?.includes(id),
+        ) ||
+        args.inlineImageIds?.some((id) => !ids.includes(id))
+      )
+        throw new Error("Niezgodna lista zdjęć w treści");
+      args = {
+        ...args,
+        contentJson: JSON.stringify(document),
+        contentHtml: legacyIndexes.length
+          ? existing!.contentHtml
+          : args.content
+              .split(/\n{2,}/)
+              .map(
+                (text) =>
+                  `<p>${text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br />")}</p>`,
+              )
+              .join("\n"),
+      };
+    }
+    const existingMedia = new Set([
+      ...(existing?.galleryIds ?? []),
+      ...(existing?.inlineImageIds ?? []),
+      ...(existing?.imageStorageId ? [existing.imageStorageId] : []),
+    ]);
+    for (const id of new Set([
+      ...(args.galleryIds ?? []),
+      ...(args.inlineImageIds ?? []),
+      ...(args.imageStorageId ? [args.imageStorageId] : []),
+    ])) {
+      if (existingMedia.has(id)) continue;
+      const file = await ctx.db.system.get(id);
+      if (
+        !file ||
+        !["image/jpeg", "image/png", "image/webp"].includes(
+          file.contentType ?? "",
+        ) ||
+        file.size > 10 * 1024 * 1024
+      )
+        throw new Error("Nieprawidłowy plik zdjęcia");
+    }
     if (!args.title.trim()) throw new Error("Podaj tytuł artykułu");
     // Pusty slug = generujemy z tytułu, z sufiksem przy kolizji.
     if (!args.slug.trim()) {
@@ -121,14 +226,17 @@ export const saveDraft = mutation({
       }
       args = { ...args, slug: candidate };
     }
-    const existing = await ctx.db
+    const bySlug = await ctx.db
       .query("articles")
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .first();
+    if (bySlug && bySlug._id !== args.id)
+      throw new Error("Ten adres jest już zajęty przez inny artykuł");
 
     // Published articles need a publish date: the news feed orders and
     // paginates by publishedAt.
-    const doc = { ...args };
+    const { id: _id, ...doc } = args;
+    void _id;
     if (
       doc.status === "published" &&
       doc.publishedAt === undefined &&
@@ -138,15 +246,13 @@ export const saveDraft = mutation({
     }
 
     if (existing) {
-      // Podmiana zdjęcia głównego: stary plik znika ze storage.
-      if (
-        doc.imageStorageId &&
-        existing.imageStorageId &&
-        doc.imageStorageId !== existing.imageStorageId
-      ) {
-        await ctx.storage.delete(existing.imageStorageId);
-      }
-      await ctx.db.patch(existing._id, doc);
+      await ctx.db.patch(existing._id, {
+        ...doc,
+        excerpt: args.excerpt,
+        category: args.category,
+        teamId: args.teamId,
+        youtubeUrl: args.youtubeUrl,
+      });
       return existing._id;
     }
 

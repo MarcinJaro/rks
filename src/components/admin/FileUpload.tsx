@@ -1,6 +1,7 @@
 "use client";
 
 import { ImageCropDialog } from "@/components/admin/ImageCropDialog";
+import { prepareArticleImage } from "@/lib/prepareArticleImage";
 import { ChangeEvent, useEffect, useId, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -11,6 +12,7 @@ export function FileUpload({
   accept,
   maxSizeMb = 10,
   multiple = false,
+  optimizeImages = false,
   cropAspect,
   recropUrl,
   onUploaded,
@@ -20,6 +22,7 @@ export function FileUpload({
   accept: string;
   maxSizeMb?: number;
   multiple?: boolean;
+  optimizeImages?: boolean;
   /** Proporcje kadru (szer./wys.) - pojedyncze zdjęcie przechodzi przez kadrowanie. */
   cropAspect?: number;
   /** Aktualne zdjęcie, które można wykadrować ponownie bez szukania pliku. */
@@ -118,7 +121,8 @@ export function FileUpload({
     const ids: Id<"_storage">[] = [];
     try {
       for (const file of files) {
-        ids.push(await uploadBlob(file, file.name));
+        const body = optimizeImages ? (await prepareArticleImage(file)).blob : file;
+        ids.push(await uploadBlob(body, file.name));
       }
       onUploaded(ids);
     } catch (err) {

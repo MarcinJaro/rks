@@ -54,6 +54,8 @@ export default defineSchema({
     .index("by_hidden", ["isHidden", "publishedAt"]),
 
   articles: defineTable({
+    contentJson: v.optional(v.string()),
+    inlineImageIds: v.optional(v.array(v.id("_storage"))),
     title: v.string(),
     slug: v.string(),
     content: v.string(),

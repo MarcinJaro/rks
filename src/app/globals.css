@@ -213,3 +213,24 @@ a {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* Shared editorial typography: the canvas and published story match. */
+.article-prose { font-size: 1.0625rem; line-height: 1.85; overflow-wrap: anywhere; }
+.article-prose > * + * { margin-top: 1.25em; }
+.article-prose h2 { font-size: 1.65em; font-weight: 800; line-height: 1.25; margin-top: 1.75em; }
+.article-prose h3 { font-size: 1.3em; font-weight: 750; line-height: 1.35; margin-top: 1.5em; }
+.article-prose ul, .article-prose ol { padding-left: 1.6em; }
+.article-prose ul { list-style: disc; }
+.article-prose ol { list-style: decimal; }
+.article-prose li + li { margin-top: .35em; }
+.article-prose blockquote { border-left: 3px solid var(--color-secondary, #1976a3); padding-left: 1.25em; font-style: italic; }
+.article-prose a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+.article-prose img { max-width: 100%; height: auto; border-radius: .65rem; margin-inline: auto; }
+.article-prose figure { margin-inline: auto; max-width: 100%; }
+.article-prose figcaption { margin-top: .65em; text-align: center; font-size: .8em; opacity: .7; }
+.article-prose .ProseMirror-selectednode { outline: 3px solid #2a87c4; outline-offset: 4px; }
+.article-prose hr { margin-block: 2em; border-color: currentColor; opacity: .2; }
+.article-prose.ProseMirror > p:first-child:last-child:empty::before { content: "Tutaj zaczyna się Twoja historia…"; color: #788795; pointer-events: none; float: left; height: 0; }
+@media (max-width: 640px) { .article-prose figure { width: 100% !important; } }
+
+.admin-shell .article-prose a { color: var(--secondary); }

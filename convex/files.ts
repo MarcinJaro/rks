@@ -1,4 +1,4 @@
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAdmin } from "./adminAuth";
 
@@ -20,5 +20,14 @@ export const removeUpload = mutation({
   handler: async (ctx, { storageId }) => {
     await requireAdmin(ctx);
     await ctx.storage.delete(storageId);
+  },
+});
+
+export const getImageUrl = query({
+  args: { storageId: v.id("_storage") },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, { storageId }) => {
+    await requireAdmin(ctx);
+    return await ctx.storage.getUrl(storageId);
   },
 });

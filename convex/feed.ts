@@ -1,3 +1,4 @@
+import { legacyImageUrls } from "../src/lib/articleDocument";
 import { query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
@@ -289,6 +290,23 @@ export const getPostBySlug = query({
       return {
         source: "cms" as const,
         title: article.title,
+        contentJson: article.contentJson,
+        inlineImageUrls: {
+          ...Object.fromEntries(
+            legacyImageUrls(article.contentHtml).map((url, index) => [
+              `legacy:${index}`,
+              url,
+            ]),
+          ),
+          ...Object.fromEntries(
+            await Promise.all(
+              (article.inlineImageIds ?? []).map(async (id) => [
+                id,
+                await ctx.storage.getUrl(id),
+              ]),
+            ),
+          ),
+        },
         content: article.content,
         contentHtml: article.contentHtml,
         imageUrl: article.imageStorageId

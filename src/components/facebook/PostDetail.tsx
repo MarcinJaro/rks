@@ -1,6 +1,7 @@
 "use client";
 
-import { SmartCropImage } from "@/components/shared/SmartCropImage";
+import { ArticleBody } from "@/components/articles/ArticleBody";
+import { ArticleGallery } from "@/components/articles/ArticleGallery";
 import Link from "next/link";
 import { ArrowLeft, PlayCircle } from "lucide-react";
 import { useQuery } from "convex/react";
@@ -42,7 +43,7 @@ function LiveDetail({ slug }: { slug: string }) {
       : buildFeedTitle(post.content || "");
   const heroUrl = post.imageUrl || post.imageUrls?.find(Boolean) || null;
   const gallery = (post.imageUrls || []).filter(
-    (url): url is string => Boolean(url) && url !== heroUrl,
+    (url): url is string => Boolean(url) && (post.source === "cms" || url !== heroUrl),
   );
   const isLocal = (url: string) => url.startsWith("http://127.0.0.1");
   // videoEmbeddable === false: FB odmawia osadzenia (prawa autorskie) —
@@ -123,7 +124,9 @@ function LiveDetail({ slug }: { slug: string }) {
         </div>
       ) : null}
 
-      {post.contentHtml ? (
+      {post.source === "cms" && post.contentJson ? (
+        <div className="mx-auto mt-10 max-w-3xl text-white/90"><ArticleBody document={post.contentJson} imageUrls={post.inlineImageUrls} /></div>
+      ) : post.contentHtml ? (
         <div className="mx-auto mt-10 max-w-3xl [&_a]:font-bold [&_a]:text-accent [&_a]:underline [&_.hashtag]:font-bold [&_.hashtag]:text-accent">
           {parsePostBody(removeEmoji(post.contentHtml), title).map(
             (block, index) => {
@@ -171,25 +174,7 @@ function LiveDetail({ slug }: { slug: string }) {
         </div>
       ) : null}
 
-      {gallery.length > 0 ? (
-        <div className="mx-auto mt-12 grid max-w-4xl gap-4 sm:grid-cols-2">
-          {gallery.map((url) => (
-            <div
-              key={url}
-              className="relative aspect-[4/3] overflow-hidden rounded-lg border border-white/8 bg-[var(--feed-media)]"
-            >
-              <SmartCropImage
-                src={url}
-                alt={title}
-                fill
-                unoptimized={isLocal(url)}
-                sizes="(min-width: 640px) 50vw, 100vw"
-                className="object-cover transition duration-500 hover:scale-105"
-              />
-            </div>
-          ))}
-        </div>
-      ) : null}
+      <ArticleGallery urls={gallery} title={title} />
     </article>
   );
 }

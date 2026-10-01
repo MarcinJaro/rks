@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import { AdminEditorDialog } from "@/components/admin/AdminEditorDialog";
 import { Field, Feedback, inputClass } from "@/components/admin/fields";
 import { FileUpload } from "@/components/admin/FileUpload";
+import {
+  ArticleComposer,
+  type ComposerValue,
+} from "@/components/admin/ArticleComposer";
 import { errorMessage } from "@/lib/convexError";
 
 type FormState = {
@@ -18,6 +22,11 @@ type FormState = {
   category: string;
   teamId: string;
   content: string;
+  contentHtml: string;
+  contentJson?: string;
+  inlineImageIds: Id<"_storage">[];
+  galleryIds: Id<"_storage">[];
+  mediaUrls: Record<string, string | null>;
   status: "draft" | "published";
   publishedAt: string;
   imageStorageId: Id<"_storage"> | "";
@@ -31,6 +40,10 @@ const emptyForm: FormState = {
   category: "",
   teamId: "",
   content: "",
+  contentHtml: "",
+  inlineImageIds: [],
+  galleryIds: [],
+  mediaUrls: {},
   status: "draft",
   publishedAt: "",
   imageStorageId: "",
@@ -53,7 +66,9 @@ function contentToHtml(content: string) {
     .split(/\n{2,}/)
     .map((paragraph) => paragraph.trim())
     .filter(Boolean)
-    .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br/>")}</p>`)
+    .map(
+      (paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br/>")}</p>`,
+    )
     .join("\n");
 }
 
@@ -83,13 +98,33 @@ export default function AdminArticlesPage() {
   const [uploadedImageId, setUploadedImageId] = useState<Id<"_storage"> | "">(
     "",
   );
+  const sessionUploads = useRef<Id<"_storage">[]>([]);
+  const [dirty, setDirty] = useState(false);
+  const [initialContent, setInitialContent] = useState(emptyForm);
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [uploadBusy, setUploadBusy] = useState(false);
   const editorBusy = busy || uploadBusy;
+  const articleMedia = useQuery(
+    api.articles.adminMedia,
+    editingId && editingId !== "new" ? { id: editingId } : "skip",
+  );
+  const coverUrl = useQuery(
+    api.files.getImageUrl,
+    form.imageStorageId ? { storageId: form.imageStorageId } : "skip",
+  );
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setDirty(true);
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -99,6 +134,9 @@ export default function AdminArticlesPage() {
   }
 
   function discardSessionUpload() {
+    for (const storageId of sessionUploads.current)
+      void removeUpload({ storageId }).catch(() => {});
+    sessionUploads.current = [];
     const id = uploadedImageId;
     if (!id) return;
     setUploadedImageId("");
@@ -111,30 +149,43 @@ export default function AdminArticlesPage() {
     resetFeedback();
     discardSessionUpload();
     setForm(emptyForm);
+    setInitialContent(emptyForm);
+    setDirty(false);
     setEditingId("new");
   }
 
   function openEdit(article: NonNullable<typeof articles>[number]) {
     resetFeedback();
     discardSessionUpload();
-    setForm({
+    const nextForm: FormState = {
       title: article.title,
       slug: article.slug,
       excerpt: article.excerpt ?? "",
       category: article.category ?? "",
       teamId: article.teamId ?? "",
       content: article.content,
+      contentHtml: article.contentHtml,
+      contentJson: article.contentJson,
+      inlineImageIds: article.inlineImageIds ?? [],
+      galleryIds: article.galleryIds ?? [],
+      mediaUrls: {},
       status: article.status,
       publishedAt: article.publishedAt
         ? toDatetimeLocal(article.publishedAt)
         : "",
       imageStorageId: article.imageStorageId ?? "",
       youtubeUrl: article.youtubeUrl ?? "",
-    });
+    };
+    setForm(nextForm);
+    setInitialContent(nextForm);
+    setDirty(false);
     setEditingId(article._id);
   }
 
   function handleCancel() {
+    if (dirty && !window.confirm("Odrzucić niezapisane zmiany w artykule?"))
+      return;
+    setDirty(false);
     resetFeedback();
     discardSessionUpload();
     setForm(emptyForm);
@@ -161,12 +212,15 @@ export default function AdminArticlesPage() {
     try {
       const content = form.content;
       await saveDraft({
+        id: editingId && editingId !== "new" ? editingId : undefined,
         title: form.title,
-        // saveDraft upsertuje po slugu: przy edycji wysyłamy slug dokumentu,
-        // przy nowym pusty slug oznacza "wygeneruj z tytułu".
+        // Existing articles are identified by id; empty slugs are generated.
         slug: form.slug.trim(),
         content,
-        contentHtml: contentToHtml(content),
+        contentHtml: form.contentHtml || contentToHtml(content),
+        contentJson: form.contentJson,
+        inlineImageIds: form.inlineImageIds,
+        galleryIds: form.galleryIds,
         excerpt: form.excerpt.trim() || undefined,
         category: form.category.trim() || undefined,
         teamId: form.teamId ? (form.teamId as Id<"teams">) : undefined,
@@ -177,6 +231,12 @@ export default function AdminArticlesPage() {
         imageStorageId: form.imageStorageId || undefined,
         youtubeUrl: form.youtubeUrl.trim() || undefined,
       });
+      const retained = new Set([...form.inlineImageIds, ...form.galleryIds]);
+      for (const storageId of sessionUploads.current)
+        if (!retained.has(storageId))
+          void removeUpload({ storageId }).catch(() => {});
+      sessionUploads.current = [];
+      setDirty(false);
       // Zdjęcie jest już zapisane w dokumencie - nie wolno go sprzątać.
       setUploadedImageId("");
       setForm(emptyForm);
@@ -227,11 +287,14 @@ export default function AdminArticlesPage() {
         open={editingId !== null}
         onClose={handleCancel}
         title={editingId === "new" ? "Nowy artykuł" : "Edycja artykułu"}
-        description="Uzupełnij treść, publikację i materiały artykułu."
+        description="Klubowa redakcja · tekst, zdjęcia i galeria w jednym miejscu."
         size="xl"
         busy={editorBusy}
         footer={
           <>
+            <span className="mr-auto text-xs text-muted-foreground">
+              {dirty ? "Niezapisane zmiany" : "Gotowy do edycji"}
+            </span>
             <Button
               type="button"
               variant="ghost"
@@ -262,35 +325,17 @@ export default function AdminArticlesPage() {
             disabled={editorBusy}
             className="mt-4 grid min-w-0 gap-4 border-0 p-0 md:grid-cols-2"
           >
-            <Field label="Tytuł">
-              <input
-                value={form.title}
-                onChange={(event) => set("title", event.target.value)}
-                required
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Slug (adres URL)">
-              {editingId === "new" ? (
+            <div className="md:col-span-2">
+              <Field label="Tytuł">
                 <input
-                  value={form.slug}
-                  onChange={(event) => set("slug", event.target.value)}
-                  placeholder="puste = wygeneruje się z tytułu"
-                  className={inputClass}
+                  value={form.title}
+                  onChange={(event) => set("title", event.target.value)}
+                  required
+                  className={`${inputClass} text-xl font-bold`}
+                  placeholder="Nadaj tytuł swojej historii…"
                 />
-              ) : (
-                <>
-                  <input
-                    value={form.slug}
-                    readOnly
-                    className={`${inputClass} opacity-60`}
-                  />
-                  <span className="text-xs font-normal text-muted-foreground">
-                    Slug jest stały - zmiana zerwałaby istniejące linki.
-                  </span>
-                </>
-              )}
-            </Field>
+              </Field>
+            </div>
             <div className="md:col-span-2">
               <Field label="Zajawka">
                 <textarea
@@ -301,83 +346,146 @@ export default function AdminArticlesPage() {
                 />
               </Field>
             </div>
-            <Field label="Kategoria">
-              <input
-                value={form.category}
-                onChange={(event) => set("category", event.target.value)}
-                placeholder="Mecze, obozy, klub…"
-                className={inputClass}
-              />
-            </Field>
-            <Field label="Drużyna">
-              <select
-                value={form.teamId}
-                onChange={(event) => set("teamId", event.target.value)}
-                className={inputClass}
-              >
-                <option value="">Brak przypisania</option>
-                {teams.map((team) => (
-                  <option key={team._id} value={team._id}>
-                    {team.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
             <div className="md:col-span-2">
-              <Field label="Treść">
-                <textarea
-                  value={form.content}
-                  onChange={(event) => set("content", event.target.value)}
-                  rows={12}
-                  placeholder="Pusta linia rozdziela akapity."
-                  className={inputClass}
-                />
-              </Field>
-            </div>
-            <Field label="Status">
-              <select
-                value={form.status}
-                onChange={(event) =>
-                  set("status", event.target.value as FormState["status"])
-                }
-                className={inputClass}
-              >
-                <option value="draft">Szkic</option>
-                <option value="published">Opublikowany</option>
-              </select>
-            </Field>
-            <Field label="Data publikacji">
-              <input
-                type="datetime-local"
-                value={form.publishedAt}
-                onChange={(event) => set("publishedAt", event.target.value)}
-                className={inputClass}
-              />
-              <span className="text-xs font-normal text-muted-foreground">
-                Puste pole przy publikacji = data ustawi się automatycznie.
-              </span>
-            </Field>
-            <Field label="Link YouTube">
-              <input
-                value={form.youtubeUrl}
-                onChange={(event) => set("youtubeUrl", event.target.value)}
-                placeholder="https://www.youtube.com/watch?v=…"
-                className={inputClass}
-              />
-            </Field>
-            <div className="md:col-span-2">
-              <FileUpload
-                label="Zdjęcie główne (max 10 MB)"
-                accept="image/*"
-                onBusyChange={setUploadBusy}
-                onUploaded={handleImageUploaded}
-              />
-              {uploadedImageId ? (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Zdjęcie wysłane. Zapisze się po kliknięciu &quot;Zapisz&quot;.
+              {editingId !== "new" && articleMedia === undefined ? (
+                <p
+                  role="status"
+                  className="py-12 text-center text-muted-foreground"
+                >
+                  Wczytywanie treści i zdjęć…
                 </p>
-              ) : null}
+              ) : (
+                <ArticleComposer
+                  key={editingId}
+                  disabled={busy}
+                  initialHtml={
+                    initialContent.contentHtml ||
+                    contentToHtml(initialContent.content)
+                  }
+                  initialJson={initialContent.contentJson}
+                  initialGallery={initialContent.galleryIds}
+                  initialUrls={articleMedia ?? initialContent.mediaUrls}
+                  onChange={(value: ComposerValue) => {
+                    setDirty(true);
+                    setForm((prev) => ({ ...prev, ...value }));
+                  }}
+                  onUploaded={(id) => {
+                    sessionUploads.current.push(id);
+                    setDirty(true);
+                  }}
+                  onBusyChange={setUploadBusy}
+                />
+              )}
             </div>
+            <details
+              className="md:col-span-2 rounded-xl border border-border p-5"
+              open
+            >
+              <summary className="cursor-pointer text-base font-black text-navy">
+                Publikacja i zdjęcie główne
+              </summary>
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <Field label="Slug (adres URL)">
+                  {editingId === "new" ? (
+                    <input
+                      value={form.slug}
+                      onChange={(event) => set("slug", event.target.value)}
+                      placeholder="puste = wygeneruje się z tytułu"
+                      className={inputClass}
+                    />
+                  ) : (
+                    <>
+                      <input
+                        value={form.slug}
+                        readOnly
+                        className={`${inputClass} opacity-60`}
+                      />
+                      <span className="text-xs font-normal text-muted-foreground">
+                        Slug jest stały - zmiana zerwałaby istniejące linki.
+                      </span>
+                    </>
+                  )}
+                </Field>
+                <Field label="Kategoria">
+                  <input
+                    value={form.category}
+                    onChange={(event) => set("category", event.target.value)}
+                    placeholder="Mecze, obozy, klub…"
+                    className={inputClass}
+                  />
+                </Field>
+                <Field label="Drużyna">
+                  <select
+                    value={form.teamId}
+                    onChange={(event) => set("teamId", event.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="">Brak przypisania</option>
+                    {teams.map((team) => (
+                      <option key={team._id} value={team._id}>
+                        {team.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Status">
+                  <select
+                    value={form.status}
+                    onChange={(event) =>
+                      set("status", event.target.value as FormState["status"])
+                    }
+                    className={inputClass}
+                  >
+                    <option value="draft">Szkic</option>
+                    <option value="published">Opublikowany</option>
+                  </select>
+                </Field>
+                <Field label="Data publikacji">
+                  <input
+                    type="datetime-local"
+                    value={form.publishedAt}
+                    onChange={(event) => set("publishedAt", event.target.value)}
+                    className={inputClass}
+                  />
+                  <span className="text-xs font-normal text-muted-foreground">
+                    Puste pole przy publikacji = data ustawi się automatycznie.
+                  </span>
+                </Field>
+                <Field label="Link YouTube">
+                  <input
+                    value={form.youtubeUrl}
+                    onChange={(event) => set("youtubeUrl", event.target.value)}
+                    placeholder="https://www.youtube.com/watch?v=…"
+                    className={inputClass}
+                  />
+                </Field>
+                <div className="md:col-span-2">
+                  <FileUpload
+                    label="Zdjęcie główne · automatyczna optymalizacja"
+                    optimizeImages
+                    maxSizeMb={30}
+                    accept="image/jpeg,image/png,image/webp"
+                    onBusyChange={setUploadBusy}
+                    onUploaded={handleImageUploaded}
+                  />
+                  {coverUrl ? (
+                    <Image
+                      src={coverUrl}
+                      alt="Zdjęcie główne"
+                      width={240}
+                      height={160}
+                      className="mt-3 h-32 w-auto rounded-lg object-contain"
+                    />
+                  ) : null}
+                  {uploadedImageId ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Zdjęcie wysłane. Zapisze się po kliknięciu
+                      &quot;Zapisz&quot;.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </details>
           </fieldset>
         </form>
       </AdminEditorDialog>
@@ -427,7 +535,11 @@ export default function AdminArticlesPage() {
               </div>
             </div>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => openEdit(article)}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => openEdit(article)}
+              >
                 Edytuj
               </Button>
               <Button
