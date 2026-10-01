@@ -82,7 +82,9 @@ function cleanNumber(number: string | undefined) {
   const value = number.trim();
   if (!value) return undefined;
   if (!/^\d{1,3}$/.test(value)) {
-    throw new Error(`Numer zawodnika może mieć maksymalnie ${MAX_NUMBER} cyfry`);
+    throw new Error(
+      `Numer zawodnika to od 1 do ${MAX_NUMBER} cyfr, bez liter i znaków (np. 7 albo 10)`,
+    );
   }
   return value;
 }

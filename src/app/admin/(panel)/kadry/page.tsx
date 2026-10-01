@@ -471,8 +471,12 @@ function AdminSquadsWorkspace() {
             <Field label="Numer (opcjonalnie)">
               <input
                 value={form.number}
-                onChange={(event) => set("number", event.target.value)}
+                // Serwer przyjmuje tylko 1-3 cyfry - inne znaki odrzucamy od razu.
+                onChange={(event) =>
+                  set("number", event.target.value.replace(/\D/g, "").slice(0, 3))
+                }
                 inputMode="numeric"
+                maxLength={3}
                 placeholder="10"
                 className={inputClass}
               />
