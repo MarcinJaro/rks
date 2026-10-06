@@ -108,7 +108,6 @@ export const recruitmentSteps: RecruitmentStep[] = [
   {
     title: "Rejestracja w systemie Łączy Nas Piłka",
     body: "Rejestracja konta oraz zgłoszenie dziecka do Akademii RKS Okęcie.",
-    note: naborNote,
     links: [
       {
         label: "laczynaspilka.pl",
