@@ -2,6 +2,7 @@
 
 import { ArticleBody } from "@/components/articles/ArticleBody";
 import { ArticleGallery } from "@/components/articles/ArticleGallery";
+import { ArticleVideo } from "@/components/articles/ArticleVideo";
 import { Lightbox } from "@/components/shared/Lightbox";
 import Link from "next/link";
 import { useState } from "react";
@@ -192,6 +193,10 @@ function LiveDetail({ slug }: { slug: string }) {
             },
           )}
         </div>
+      ) : null}
+
+      {post.source === "cms" && post.videoUrl ? (
+        <ArticleVideo url={post.videoUrl} title={title} />
       ) : null}
 
       <ArticleGallery urls={gallery} title={title} />

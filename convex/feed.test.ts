@@ -250,3 +250,30 @@ describe("getNewsArchiveRange", () => {
     expect(result.oldestPublishedAt).toBeNull();
   });
 });
+
+describe("getPostBySlug", () => {
+  it("przekazuje link YouTube artykułu jako videoUrl", async () => {
+    const t = convexTest(schema);
+    await seed(
+      t,
+      [],
+      [
+        article(0, JUNE_1, {
+          youtubeUrl: "https://www.youtube.com/watch?v=QXjIkmIJ_B4",
+        }),
+      ],
+    );
+
+    const post = await t.query(api.feed.getPostBySlug, { slug: "artykul-0" });
+    expect(post?.source).toBe("cms");
+    expect(post?.videoUrl).toBe("https://www.youtube.com/watch?v=QXjIkmIJ_B4");
+  });
+
+  it("artykuł bez linku ma puste videoUrl", async () => {
+    const t = convexTest(schema);
+    await seed(t, [], [article(0, JUNE_1)]);
+
+    const post = await t.query(api.feed.getPostBySlug, { slug: "artykul-0" });
+    expect(post?.videoUrl).toBeUndefined();
+  });
+});

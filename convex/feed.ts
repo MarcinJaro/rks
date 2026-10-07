@@ -318,7 +318,7 @@ export const getPostBySlug = query({
             )
           : ([] as (string | null)[]),
         postType: "article",
-        videoUrl: undefined,
+        videoUrl: article.youtubeUrl,
         videoEmbeddable: undefined,
         publishedAt: article.publishedAt || 0,
         category: article.category,
